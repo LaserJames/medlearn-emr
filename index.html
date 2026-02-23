@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLearn EMR — Clinical Documentation System</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+:root {
+  --bg: #080c10;
+  --surface: #0d1219;
+  --surface2: #111820;
+  --surface3: #161e28;
+  --surface4: #1c2530;
+  --border: #1e2d3d;
+  --border2: #263545;
+  --text: #cdd9e5;
+  --text2: #768a9e;
+  --text3: #4a6070;
+  --accent: #2f81f7;
+  --accent-hover: #58a6ff;
+  --accent-soft: rgba(47,129,247,0.12);
+  --accent-glow: rgba(47,129,247,0.06);
+  --green: #3fb950;
+  --green-soft: rgba(63,185,80,0.12);
+  --red: #f85149;
+  --red-soft: rgba(248,81,73,0.12);
+  --yellow: #d29922;
+  --yellow-soft: rgba(210,153,34,0.12);
+  --purple: #a371f7;
+  --cyan: #39d0d8;
+  --radius: 5px;
+  --radius-lg: 10px;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --shadow: 0 4px 24px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 48px rgba(0,0,0,0.7);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── LOADING SCREEN ── */
+#loading-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; z-index: 9999;
+}
+.loading-logo { font-size: 48px; }
+.loading-text { font-family: var(--mono); font-size: 13px; color: var(--text3); letter-spacing: 0.1em; }
+.loading-bar { width: 200px; height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.loading-bar-fill { height: 100%; background: var(--accent); animation: loadbar 1.5s ease-in-out infinite; }
+@keyframes loadbar { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
+
+/* ── AUTH SCREEN ── */
+#auth-screen {
+  display: none; min-height: 100vh; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 20% 50%, rgba(47,129,247,0.07) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(57,208,216,0.04) 0%, transparent 50%), var(--bg);
+}
+.auth-container { width: 100%; max-width: 420px; padding: 20px; }
+.auth-brand { text-align: center; margin-bottom: 40px; }
+.auth-brand-icon {
+  width: 56px; height: 56px; background: linear-gradient(135deg, var(--accent), var(--cyan));
+  border-radius: 14px; display: flex; align-items: center; justify-content: center;
+  font-size: 26px; margin: 0 auto 16px; box-shadow: 0 0 40px rgba(47,129,247,0.3);
+}
+.auth-brand-name { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+.auth-brand-sub { font-size: 12px; color: var(--text3); font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
+.auth-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 32px; box-shadow: var(--shadow-lg);
+}
+.auth-tabs { display: flex; margin-bottom: 28px; background: var(--surface2); border-radius: var(--radius); padding: 3px; }
+.auth-tab {
+  flex: 1; padding: 8px; text-align: center; font-size: 13px; font-weight: 500;
+  cursor: pointer; border-radius: 4px; transition: all 0.2s; color: var(--text2);
+}
+.auth-tab.active { background: var(--surface4); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.auth-form { display: none; }
+.auth-form.active { display: block; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.field input, .field select {
+  width: 100%; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.field select option { background: var(--surface2); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.class-code-note { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.btn-auth {
+  width: 100%; padding: 11px; background: var(--accent); border: none; border-radius: var(--radius);
+  color: #fff; font-family: var(--font); font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all 0.15s; margin-top: 6px; letter-spacing: 0.01em;
+}
+.btn-auth:hover { background: var(--accent-hover); box-shadow: 0 0 20px rgba(47,129,247,0.4); }
+.btn-auth:disabled { opacity: 0.5; cursor: not-allowed; }
+.auth-error { background: var(--red-soft); border: 1px solid rgba(248,81,73,0.2); border-radius: var(--radius); padding: 10px 12px; font-size: 12px; color: var(--red); margin-bottom: 14px; display: none; }
+.auth-class-info { background: var(--accent-soft); border: 1px solid rgba(47,129,247,0.2); border-radius: var(--radius); padding: 10px 12px; font-size: 12px; color: var(--accent-hover); margin-bottom: 14px; line-height: 1.6; }
+
+/* ── APP LAYOUT ── */
+#app { display: none; height: 100vh; flex-direction: column; }
+
+/* ── TOPBAR ── */
+.topbar {
+  height: 52px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 16px; gap: 12px; flex-shrink: 0; z-index: 100;
+}
+.topbar-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; white-space: nowrap; }
+.topbar-logo-icon {
+  width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent), var(--cyan));
+  border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.topbar-sep { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; }
+.topbar-search-wrap { flex: 1; max-width: 380px; position: relative; }
+.topbar-search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px; pointer-events: none; }
+.topbar-search {
+  width: 100%; padding: 7px 12px 7px 34px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; color: var(--text); font-family: var(--font); font-size: 13px;
+  transition: all 0.15s;
+}
+.topbar-search:focus { outline: none; border-color: var(--accent); background: var(--surface3); }
+.search-dropdown {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); z-index: 300; display: none; overflow: hidden; max-height: 320px; overflow-y: auto;
+}
+.search-dropdown.open { display: block; }
+.search-result { padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.search-result:last-child { border-bottom: none; }
+.search-result:hover { background: var(--surface3); }
+.search-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+.search-info-name { font-weight: 500; font-size: 13px; }
+.search-info-meta { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.topbar-spacer { flex: 1; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.topbar-user { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: var(--radius); cursor: pointer; transition: background 0.1s; }
+.topbar-user:hover { background: var(--surface3); }
+.topbar-user-ava { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.topbar-user-info { line-height: 1.3; }
+.topbar-user-name { font-size: 13px; font-weight: 500; }
+.topbar-user-role { font-size: 10px; color: var(--text3); }
+
+/* ── BUTTONS ── */
+.btn { padding: 7px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.btn:hover { background: var(--surface3); border-color: var(--border2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn.danger { color: var(--red); border-color: transparent; background: transparent; }
+.btn.danger:hover { background: var(--red-soft); border-color: rgba(248,81,73,0.2); }
+.btn.sm { padding: 5px 10px; font-size: 11px; }
+
+/* ── MAIN CONTENT ── */
+.main-wrap { display: flex; flex: 1; overflow: hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar { width: 230px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
+.sidebar-section { padding: 10px 8px 6px; }
+.sidebar-label { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; padding: 0 8px; margin-bottom: 3px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--radius); cursor: pointer; color: var(--text2); font-size: 13px; transition: all 0.1s; }
+.nav-item:hover { background: var(--surface3); color: var(--text); }
+.nav-item.active { background: var(--accent-soft); color: var(--accent-hover); font-weight: 500; }
+.nav-icon { width: 15px; text-align: center; font-size: 13px; flex-shrink: 0; }
+.sidebar-divider { height: 1px; background: var(--border); margin: 6px 0; }
+.sidebar-recents { padding: 6px 8px; }
+.recent-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: var(--radius); cursor: pointer; transition: background 0.1s; }
+.recent-item:hover { background: var(--surface3); }
+.recent-name { font-size: 12px; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-ava { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; }
+
+/* ── PAGES ── */
+.page { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.page.active { display: flex; }
+
+/* ── DASHBOARD ── */
+#page-dashboard { padding: 28px; overflow-y: auto; }
+.dash-head { margin-bottom: 24px; }
+.dash-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+.dash-head p { color: var(--text2); font-size: 13px; margin-top: 3px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; position: relative; overflow: hidden; }
+.stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.stat-card.blue::before { background: var(--accent); }
+.stat-card.green::before { background: var(--green); }
+.stat-card.red::before { background: var(--red); }
+.stat-card.purple::before { background: var(--purple); }
+.stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.stat-value { font-size: 32px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 6px; }
+.dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.dash-card-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.dash-card-head h3 { font-size: 13px; font-weight: 600; }
+.pt-table { width: 100%; border-collapse: collapse; }
+.pt-table th { padding: 9px 16px; text-align: left; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+.pt-table td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+.pt-table tr:last-child td { border-bottom: none; }
+.pt-table tr:hover td { background: var(--surface2); cursor: pointer; }
+.pt-table .empty { padding: 32px; text-align: center; color: var(--text3); font-size: 13px; }
+
+/* ── PATIENT CHART ── */
+#page-chart { flex-direction: column; }
+.no-pt { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text3); }
+.no-pt-icon { font-size: 56px; opacity: 0.4; }
+.no-pt h2 { font-size: 17px; color: var(--text2); }
+.no-pt p { font-size: 13px; max-width: 280px; text-align: center; line-height: 1.6; }
+.pt-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.pt-header-ava { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; border: 2px solid var(--border2); }
+.pt-header-name { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+.pt-header-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 3px; font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.pt-header-actions { margin-left: auto; display: flex; gap: 8px; flex-shrink: 0; }
+.allergy-bar { background: rgba(248,81,73,0.08); border-bottom: 1px solid rgba(248,81,73,0.2); padding: 7px 24px; font-size: 12px; color: var(--red); display: none; align-items: center; gap: 8px; }
+.chart-tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 20px; overflow-x: auto; flex-shrink: 0; gap: 2px; }
+.c-tab { padding: 11px 14px; font-size: 12px; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; gap: 5px; font-weight: 500; }
+.c-tab:hover { color: var(--text); }
+.c-tab.active { color: var(--accent-hover); border-bottom-color: var(--accent); }
+.tc { background: var(--surface3); border-radius: 8px; padding: 1px 5px; font-size: 10px; font-family: var(--mono); }
+.chart-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+/* ── SECTION CARDS ── */
+.sc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 14px; overflow: hidden; }
+.sc-head { padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: space-between; }
+.sc-head h3 { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 7px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+.sc-body { padding: 16px 18px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.data-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.df label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; display: block; }
+.df .val { font-size: 13px; font-weight: 500; }
+.df .val.mono { font-family: var(--mono); }
+.df .val.muted { color: var(--text2); font-weight: 400; }
+
+/* ── DATA TABLE ── */
+.dt { width: 100%; border-collapse: collapse; }
+.dt th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+.dt td { padding: 10px 12px; font-size: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.dt tr:last-child td { border-bottom: none; }
+.dt tr:hover td { background: rgba(255,255,255,0.015); }
+.empty-state { padding: 32px; text-align: center; color: var(--text3); font-size: 13px; }
+.empty-icon { font-size: 28px; margin-bottom: 6px; opacity: 0.5; }
+
+/* ── BADGE ── */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; letter-spacing: 0.03em; }
+.badge.green { background: var(--green-soft); color: var(--green); }
+.badge.red { background: var(--red-soft); color: var(--red); }
+.badge.yellow { background: var(--yellow-soft); color: var(--yellow); }
+.badge.blue { background: var(--accent-soft); color: var(--accent-hover); }
+.badge.purple { background: rgba(163,113,247,0.12); color: var(--purple); }
+
+/* ── VITALS ── */
+.vitals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.v-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+.v-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+.v-val { font-size: 20px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+.v-unit { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.v-time { font-size: 9px; color: var(--text3); margin-top: 4px; font-family: var(--mono); }
+.v-normal { color: var(--green); }
+.v-high { color: var(--red); }
+.v-low { color: var(--yellow); }
+
+/* ── EKG ── */
+.ekg-record { background: #060e08; border: 1px solid #0e2211; border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px; }
+.ekg-canvas { width: 100%; height: 110px; display: block; }
+.ekg-data { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 11px; font-family: var(--mono); }
+.ekg-d label { color: #2a5a35; font-size: 9px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+.ekg-d span { color: #52a86a; }
+.ekg-interp { margin-top: 10px; padding: 10px; background: #050d07; border-radius: 4px; font-size: 11px; color: #4a8a5a; font-family: var(--mono); line-height: 1.7; white-space: pre-wrap; border-left: 2px solid #1a5a2a; }
+
+/* ── NOTES ── */
+.note-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
+.note-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.note-author { font-size: 12px; font-weight: 600; color: var(--accent-hover); }
+.note-time { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+.note-body { font-size: 13px; line-height: 1.7; white-space: pre-wrap; color: var(--text); }
+
+/* ── REGISTER PAGE ── */
+#page-register { overflow-y: auto; }
+#page-register .inner { padding: 28px; max-width: 760px; }
+#page-register h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+#page-register p { color: var(--text2); font-size: 13px; margin-bottom: 22px; }
+
+/* ── MODALS ── */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px); }
+.overlay.hidden { display: none; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+.modal.wide { max-width: 680px; }
+.modal-head { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.modal-head h2 { font-size: 15px; font-weight: 600; }
+.modal-x { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 16px; padding: 4px; border-radius: 4px; transition: all 0.1s; }
+.modal-x:hover { background: var(--surface3); color: var(--text); }
+.modal-body { padding: 20px 22px; }
+.modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+.mf { margin-bottom: 14px; }
+.mf label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+.mf input, .mf select, .mf textarea { width: 100%; padding: 9px 11px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 13px; transition: border-color 0.15s, box-shadow 0.15s; }
+.mf input:focus, .mf select:focus, .mf textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.mf textarea { resize: vertical; min-height: 80px; }
+.mf select option { background: var(--surface2); }
+.fr { display: grid; gap: 12px; }
+.fr.c2 { grid-template-columns: 1fr 1fr; }
+.fr.c3 { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 11px 16px; font-size: 13px; z-index: 999; box-shadow: var(--shadow); transform: translateY(60px); opacity: 0; transition: all 0.25s ease; display: flex; align-items: center; gap: 8px; max-width: 320px; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-left: 3px solid var(--green); }
+.toast.error { border-left: 3px solid var(--red); }
+.toast.info { border-left: 3px solid var(--accent); }
+
+/* ── ONLINE INDICATOR ── */
+.online-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="loading-logo">🩺</div>
+  <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+  <div class="loading-text">CONNECTING TO MEDLEARN EMR...</div>
+</div>
+
+<!-- AUTH -->
+<div id="auth-screen" style="display:none">
+  <div class="auth-container">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">🩺</div>
+      <div class="auth-brand-name">MedLearn EMR</div>
+      <div class="auth-brand-sub">Student Clinical Documentation System</div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <div class="auth-tab active" onclick="switchAuthTab('login')">Sign In</div>
+        <div class="auth-tab" onclick="switchAuthTab('register')">Register</div>
+      </div>
+
+      <!-- LOGIN -->
+      <div class="auth-form active" id="form-login">
+        <div class="auth-error" id="login-error"></div>
+        <div class="field"><label>Email Address</label><input type="email" id="li-email" placeholder="you@school.edu" /></div>
+        <div class="field"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••" /></div>
+        <button class="btn-auth" id="btn-login" onclick="doLogin()">Sign In →</button>
+      </div>
+
+      <!-- REGISTER -->
+      <div class="auth-form" id="form-register">
+        <div class="auth-class-info">
+          🔑 You'll need the <strong>class registration code</strong> from your instructor to create an account.
+        </div>
+        <div class="auth-error" id="reg-error"></div>
+        <div class="field field-row">
+          <div><label>First Name</label><input type="text" id="rg-first" placeholder="First" /></div>
+          <div><label>Last Name</label><input type="text" id="rg-last" placeholder="Last" /></div>
+        </div>
+        <div class="field"><label>Email Address</label><input type="email" id="rg-email" placeholder="you@school.edu" /></div>
+        <div class="field field-row">
+          <div><label>Password</label><input type="password" id="rg-pass" placeholder="Min. 6 characters" /></div>
+          <div><label>Role</label>
+            <select id="rg-role">
+              <option value="student">Student</option>
+              <option value="instructor">Instructor</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Class Registration Code</label>
+          <input type="text" id="rg-code" placeholder="Enter code from your instructor" />
+          <div class="class-code-note">Contact your instructor for the class code.</div>
+        </div>
+        <button class="btn-auth" id="btn-register" onclick="doRegister()">Create Account →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="topbar-logo-icon">🩺</div>
+      MedLearn EMR
+    </div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-search-wrap">
+      <span class="topbar-search-icon">🔍</span>
+      <input class="topbar-search" type="text" id="pt-search" placeholder="Search patients by name or MRN..." oninput="searchPatients(this.value)" onfocus="searchPatients(this.value)" autocomplete="off" />
+      <div class="search-dropdown" id="search-dd"></div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <span class="online-dot" title="Live database connected"></span>
+      <button class="btn primary sm" onclick="showPage('register')">+ New Patient</button>
+      <div class="topbar-sep"></div>
+      <div class="topbar-user" onclick="doLogout()">
+        <div class="topbar-user-ava" id="user-ava"></div>
+        <div class="topbar-user-info">
+          <div class="topbar-user-name" id="user-name-display"></div>
+          <div class="topbar-user-role" id="user-role-display"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-wrap">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
+        <div class="nav-item" id="nav-chart" onclick="showPage('chart')"><span class="nav-icon">📋</span>Active Chart</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Quick Actions</div>
+        <div class="nav-item" onclick="requirePatient('modal-vitals')"><span class="nav-icon">💓</span>Record Vitals</div>
+        <div class="nav-item" onclick="requirePatient('modal-med')"><span class="nav-icon">💊</span>Add Medication</div>
+        <div class="nav-item" onclick="requirePatient('modal-note')"><span class="nav-icon">📝</span>Write Note</div>
+        <div class="nav-item" onclick="requirePatient('modal-ekg')"><span class="nav-icon">📈</span>Record EKG</div>
+        <div class="nav-item" onclick="requirePatient('modal-allergy')"><span class="nav-icon">⚠️</span>Add Allergy</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Recent Patients</div>
+        <div class="sidebar-recents" id="sidebar-recents"></div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active" style="overflow-y:auto; padding:28px;">
+      <div class="dash-head">
+        <h1>Clinical Dashboard</h1>
+        <p id="dash-greeting">Welcome. Loading your session...</p>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card blue"><div class="stat-label">Total Patients</div><div class="stat-value" id="s-pts">—</div><div class="stat-sub">Registered in system</div></div>
+        <div class="stat-card red"><div class="stat-label">Active Allergies</div><div class="stat-value" id="s-al">—</div><div class="stat-sub">Across all patients</div></div>
+        <div class="stat-card green"><div class="stat-label">Active Medications</div><div class="stat-value" id="s-meds">—</div><div class="stat-sub">Current orders</div></div>
+        <div class="stat-card purple"><div class="stat-label">Notes Today</div><div class="stat-value" id="s-notes">—</div><div class="stat-sub">Clinical documentation</div></div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-head"><h3>All Patients</h3><button class="btn primary sm" onclick="showPage('register')">+ Register Patient</button></div>
+        <table class="pt-table">
+          <thead><tr><th>Patient</th><th>MRN</th><th>DOB / Age</th><th>Allergies</th><th>Active Meds</th><th>Registered By</th></tr></thead>
+          <tbody id="pt-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div id="page-chart" class="page">
+      <div class="no-pt" id="no-pt">
+        <div class="no-pt-icon">🏥</div>
+        <h2>No Patient Selected</h2>
+        <p>Search for a patient above or register a new patient to begin documentation.</p>
+        <button class="btn primary" onclick="showPage('register')" style="margin-top:8px">Register New Patient</button>
+      </div>
+      <div id="pt-chart" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+        <div class="pt-header">
+          <div class="pt-header-ava" id="ch-ava"></div>
+          <div>
+            <div class="pt-header-name" id="ch-name"></div>
+            <div class="pt-header-meta">
+              <span id="ch-mrn"></span><span id="ch-dob"></span><span id="ch-sex"></span><span id="ch-blood"></span><span id="ch-prov"></span>
+            </div>
+          </div>
+          <div class="pt-header-actions">
+            <button class="btn sm" onclick="openM('modal-vitals')">+ Vitals</button>
+            <button class="btn sm" onclick="openM('modal-note')">+ Note</button>
+            <button class="btn primary sm" onclick="openM('modal-intake')">Full Intake</button>
+          </div>
+        </div>
+        <div class="allergy-bar" id="allergy-bar">⚠️ <span id="allergy-bar-text"></span></div>
+        <div class="chart-tabs">
+          <div class="c-tab active" data-tab="overview">Overview</div>
+          <div class="c-tab" data-tab="vitals">Vitals <span class="tc" id="tc-v">0</span></div>
+          <div class="c-tab" data-tab="medications">Medications <span class="tc" id="tc-m">0</span></div>
+          <div class="c-tab" data-tab="allergies">Allergies <span class="tc" id="tc-a">0</span></div>
+          <div class="c-tab" data-tab="pmh">PMH / History <span class="tc" id="tc-h">0</span></div>
+          <div class="c-tab" data-tab="procedures">Procedures <span class="tc" id="tc-p">0</span></div>
+          <div class="c-tab" data-tab="vaccines">Vaccines / Injections <span class="tc" id="tc-va">0</span></div>
+          <div class="c-tab" data-tab="ekg">EKG <span class="tc" id="tc-e">0</span></div>
+          <div class="c-tab" data-tab="notes">Notes <span class="tc" id="tc-n">0</span></div>
+        </div>
+        <div class="chart-body" id="chart-body">
+          <div class="tab-content active" id="tab-overview"></div>
+          <div class="tab-content" id="tab-vitals"></div>
+          <div class="tab-content" id="tab-medications"></div>
+          <div class="tab-content" id="tab-allergies"></div>
+          <div class="tab-content" id="tab-pmh"></div>
+          <div class="tab-content" id="tab-procedures"></div>
+          <div class="tab-content" id="tab-vaccines"></div>
+          <div class="tab-content" id="tab-ekg"></div>
+          <div class="tab-content" id="tab-notes"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="page-register" class="page">
+      <div class="inner">
+        <h1>Register New Patient</h1>
+        <p>Complete patient demographics to create a new chart in the shared database.</p>
+        <div class="sc">
+          <div class="sc-head"><h3>👤 Patient Demographics</h3></div>
+          <div class="sc-body">
+            <div class="fr c2"><div class="mf"><label>First Name *</label><input type="text" id="nr-first" placeholder="First" /></div><div class="mf"><label>Last Name *</label><input type="text" id="nr-last" placeholder="Last" /></div></div>
+            <div class="fr c3">
+              <div class="mf"><label>Date of Birth *</label><input type="date" id="nr-dob" /></div>
+              <div class="mf"><label>Sex</label><select id="nr-sex"><option>Male</option><option>Female</option><option>Non-binary</option><option>Other</option></select></div>
+              <div class="mf"><label>Blood Type</label><select id="nr-blood"><option value="">Unknown</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
+            </div>
+            <div class="fr c3">
+              <div class="mf"><label>Phone</label><input type="tel" id="nr-phone" placeholder="555-555-5555" /></div>
+              <div class="mf"><label>Email</label><input type="email" id="nr-email" placeholder="patient@email.com" /></div>
+              <div class="mf"><label>Insurance</label><input type="text" id="nr-ins" placeholder="Blue Cross / BCBS" /></div>
+            </div>
+            <div class="mf"><label>Address</label><input type="text" id="nr-addr" placeholder="123 Main St, City, State 00000" /></div>
+            <div class="fr c2">
+              <div class="mf"><label>Emergency Contact</label><input type="text" id="nr-emerg" placeholder="Name (Relation) – Phone" /></div>
+              <div class="mf"><label>Primary Provider</label><input type="text" id="nr-prov" placeholder="Dr. Smith" /></div>
+            </div>
+            <div class="mf"><label>Chief Complaint / Reason for Visit</label><textarea id="nr-cc" placeholder="Patient's primary reason for registration..."></textarea></div>
+            <button class="btn primary" style="padding:10px 24px;font-size:14px" onclick="registerPatient()">Register Patient →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MODALS ══════════════════ -->
+
+<!-- VITALS -->
+<div class="overlay hidden" id="modal-vitals">
+  <div class="modal">
+    <div class="modal-head"><h2>💓 Record Vital Signs</h2><button class="modal-x" onclick="closeM('modal-vitals')">✕</button></div>
+    <div class="modal-body">
+      <div class="fr c2"><div class="mf"><label>Systolic BP (mmHg)</label><input type="number" id="v-sbp" placeholder="120" /></div><div class="mf"><label>Diastolic BP (mmHg)</label><input type="number" id="v-dbp" placeholder="80" /></div></div>
+      <div class="fr c3"><div class="mf"><label>Heart Rate (bpm)</label><input type="number" id="v-hr" placeholder="72" /></div><div class="mf"><label>Resp Rate (/min)</label><input type="number" id="v-rr" placeholder="16" /></div><div class="mf"><label>SpO2 (%)</label><input type="number" id="v-spo2" placeholder="98" /></div></div>
+      <div class="fr c3"><div class="mf"><label>Temperature (°F)</label><input type="number" step="0.1" id="v-temp" placeholder="98.6" /></div><div class="mf"><label>Weight (lbs)</label><input type="number" step="0.1" id="v-wt" placeholder="155" /></div><div class="mf"><label>Height (in)</label><input type="number" step="0.5" id="v-ht" placeholder="68" /></div></div>
+      <div class="mf"><label>Pain Score (0–10)</label><input type="number" min="0" max="10" id="v-pain" placeholder="0" /></div>
+      <div class="mf"><label>Notes</label><textarea id="v-notes" placeholder="Notes about this vital recording..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-vitals')">Cancel</button><button class="btn primary" onclick="saveVitals()">Save Vitals</button></div>
+  </div>
+</div>
+
+<!-- MEDICATION -->
+<div class="overlay hidden" id="modal-med">
+  <div class="modal">
+    <div class="modal-head"><h2>💊 Add Medication</h2><button class="modal-x" onclick="closeM('modal-med')">✕</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Medication Name *</label><input type="text" id="m-name" placeholder="e.g. Lisinopril" /></div>
+      <div class="fr c2"><div class="mf"><label>Dose *</label><input type="text" id="m-dose" placeholder="e.g. 10 mg" /></div><div class="mf"><label>Route *</label><select id="m-route"><option>Oral (PO)</option><option>IV</option><option>IM</option><option>SubQ</option><option>Topical</option><option>Inhaled</option><option>Sublingual</option><option>Rectal (PR)</option><option>Nasal</option><option>Ophthalmic</option></select></div></div>
+      <div class="fr c2"><div class="mf"><label>Frequency</label><select id="m-freq"><option>Once daily (QD)</option><option>Twice daily (BID)</option><option>Three times daily (TID)</option><option>Four times daily (QID)</option><option>Every 4 hours (Q4H)</option><option>Every 6 hours (Q6H)</option><option>PRN (as needed)</option><option>Weekly</option><option>Once</option></select></div><div class="mf"><label>Status</label><select id="m-stat"><option>Active</option><option>Discontinued</option><option>On Hold</option><option>PRN</option></select></div></div>
+      <div class="mf"><label>Indication</label><input type="text" id="m-ind" placeholder="e.g. Hypertension" /></div>
+      <div class="fr c2"><div class="mf"><label>Start Date</label><input type="date" id="m-start" /></div><div class="mf"><label>Stop Date</label><input type="date" id="m-stop" /></div></div>
+      <div class="mf"><label>Notes / Instructions</label><textarea id="m-notes" placeholder="Special instructions..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-med')">Cancel</button><button class="btn primary" onclick="saveMed()">Add Medication</button></div>
+  </div>
+</div>
+
+<!-- ALLERGY -->
+<div class="overlay hidden" id="modal-allergy">
+  <div class="modal">
+    <div class="modal-head"><h2>⚠️ Add Allergy / Adverse Reaction</h2><button class="modal-x" onclick="closeM('modal-allergy')">✕</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Allergen *</label><input type="text" id="a-name" placeholder="e.g. Penicillin, Peanuts, Latex" /></div>
+      <div class="fr c2"><div class="mf"><label>Type</label><select id="a-type"><option>Drug</option><option>Food</option><option>Environmental</option><option>Latex</option><option>Contrast Dye</option><option>Other</option></select></div><div class="mf"><label>Severity</label><select id="a-sev"><option>Mild</option><option>Moderate</option><option>Severe</option><option>Life-threatening (Anaphylaxis)</option></select></div></div>
+      <div class="mf"><label>Reaction(s)</label><input type="text" id="a-react" placeholder="e.g. Hives, Anaphylaxis, GI upset" /></div>
+      <div class="mf"><label>Onset</label><input type="text" id="a-onset" placeholder="e.g. Childhood, 2019" /></div>
+      <div class="mf"><label>Notes</label><textarea id="a-notes" placeholder="Additional details..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-allergy')">Cancel</button><button class="btn primary" onclick="saveAllergy()">Add Allergy</button></div>
+  </div>
+</div>
+
+<!-- PMH -->
+<div class="overlay hidden" id="modal-pmh">
+  <div class="modal">
+    <div class="modal-head"><h2>🏥 Add Medical History</h2><button class="modal-x" onclick="closeM('modal-pmh')">✕</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Condition *</label><input type="text" id="pmh-cond" placeholder="e.g. Type 2 Diabetes" /></div>
+      <div class="fr c2"><div class="mf"><label>Status</label><select id="pmh-stat"><option>Active</option><option>Resolved</option><option>Chronic</option><option>In Remission</option></select></div><div class="mf"><label>Year Diagnosed</label><input type="text" id="pmh-yr" placeholder="e.g. 2018" /></div></div>
+      <div class="mf"><label>Notes</label><textarea id="pmh-notes" placeholder="Details..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-pmh')">Cancel</button><button class="btn primary" onclick="savePMH()">Add</button></div>
+  </div>
+</div>
+
+<!-- SURGERY -->
+<div class="overlay hidden" id="modal-surgery">
+  <div class="modal">
+    <div class="modal-head"><h2>🔪 Add Surgical History</h2><button class="modal-x" onclick="closeM('modal-surgery')">✕</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Procedure *</label><input type="text" id="su-proc" placeholder="e.g. Appendectomy" /></div>
+      <div class="mf"><label>Year</label><input type="text" id="su-yr" placeholder="e.g. 2015" /></div>
+      <div class="mf"><label>Notes / Complications</label><textarea id="su-notes" placeholder="Facility, complications, outcome..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-surgery')">Cancel</button><button class="btn primary" onclick="saveSurgery()">Add</button></div>
+  </div>
+</div>
+
+<!-- FAMILY HX -->
+<div class="overlay hidden" id="modal-family">
+  <div class="modal">
+    <div class="modal-head"><h2>👨‍👩‍👧 Add Family History</h2><button class="modal-x" onclick="closeM('modal-family')">✕</button></div>
+    <div class="modal-body">
+      <div class="fr c2"><div class="mf"><label>Relation *</label><select id="fh-rel"><option>Father</option><option>Mother</option><option>Brother</option><option>Sister</option><option>Paternal Grandfather</option><option>Paternal Grandmother</option><option>Maternal Grandfather</option><option>Maternal Grandmother</option><option>Other</option></select></div><div class="mf"><label>Condition *</label><input type="text" id="fh-cond" placeholder="e.g. Heart Disease" /></div></div>
+      <div class="mf"><label>Notes</label><textarea id="fh-notes" placeholder="Age of onset, details..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-family')">Cancel</button><button class="btn primary" onclick="saveFamilyHx()">Add</button></div>
+  </div>
+</div>
+
+<!-- SOCIAL HX -->
+<div class="overlay hidden" id="modal-social">
+  <div class="modal">
+    <div class="modal-head"><h2>👤 Social History</h2><button class="modal-x" onclick="closeM('modal-social')">✕</button></div>
+    <div class="modal-body">
+      <div class="fr c2">
+        <div class="mf"><label>Tobacco</label><select id="soc-tob"><option value="">—</option><option>Never</option><option>Former smoker</option><option>Current smoker</option><option>Vapes / E-cigarettes</option><option>Occasional</option></select></div>
+        <div class="mf"><label>Alcohol</label><select id="soc-alc"><option value="">—</option><option>None</option><option>Social / Occasional</option><option>Moderate (1-2/day)</option><option>Heavy (3+/day)</option><option>History of AUD</option></select></div>
+      </div>
+      <div class="fr c2">
+        <div class="mf"><label>Drug Use</label><select id="soc-drug"><option value="">—</option><option>None</option><option>Marijuana</option><option>History of substance use</option><option>IV drug use</option></select></div>
+        <div class="mf"><label>Exercise</label><select id="soc-ex"><option value="">—</option><option>Sedentary</option><option>Lightly active</option><option>Moderately active</option><option>Very active</option></select></div>
+      </div>
+      <div class="fr c2">
+        <div class="mf"><label>Occupation</label><input type="text" id="soc-occ" placeholder="e.g. Teacher" /></div>
+        <div class="mf"><label>Marital Status</label><select id="soc-mar"><option value="">—</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option><option>Domestic Partner</option></select></div>
+      </div>
+      <div class="mf"><label>Diet</label><input type="text" id="soc-diet" placeholder="e.g. Regular, Vegetarian" /></div>
+      <div class="mf"><label>Additional Notes</label><textarea id="soc-notes" placeholder="Living situation, stressors..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-social')">Cancel</button><button class="btn primary" onclick="saveSocial()">Save</button></div>
+  </div>
+</div>
+
+<!-- PROCEDURE -->
+<div class="overlay hidden" id="modal-procedure">
+  <div class="modal">
+    <div class="modal-head"><h2>🔬 Add Procedure / Diagnostic</h2><button class="modal-x" onclick="closeM('modal-procedure')">✕</button></div>
+    <div class="modal-body">
+      <div class="fr c2"><div class="mf"><label>Date *</label><input type="date" id="pr-date" /></div><div class="mf"><label>Type</label><select id="pr-type"><option>Diagnostic</option><option>Therapeutic</option><option>Imaging</option><option>Lab Work</option><option>Biopsy</option><option>Endoscopy</option><option>Surgical</option><option>Other</option></select></div></div>
+      <div class="mf"><label>Procedure Name *</label><input type="text" id="pr-name" placeholder="e.g. Chest X-Ray, CBC with Diff" /></div>
+      <div class="fr c2"><div class="mf"><label>Provider / Ordered By</label><input type="text" id="pr-prov" placeholder="Dr. Smith" /></div><div class="mf"><label>Status</label><select id="pr-stat"><option>Ordered</option><option>Completed</option><option>Pending Results</option><option>Cancelled</option></select></div></div>
+      <div class="mf"><label>Results / Findings</label><textarea id="pr-results" placeholder="Document results or pending status..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-procedure')">Cancel</button><button class="btn primary" onclick="saveProcedure()">Add Procedure</button></div>
+  </div>
+</div>
+
+<!-- VACCINE -->
+<div class="overlay hidden" id="modal-vaccine">
+  <div class="modal">
+    <div class="modal-head"><h2>💉 Add Vaccine / Injection</h2><button class="modal-x" onclick="closeM('modal-vaccine')">✕</button></div>
+    <div class="modal-body">
+      <div class="fr c2"><div class="mf"><label>Date *</label><input type="date" id="vc-date" /></div><div class="mf"><label>Type</label><select id="vc-type"><option>Vaccine</option><option>Therapeutic Injection</option><option>Insulin</option><option>Immunotherapy</option><option>Corticosteroid</option><option>Vitamin/Supplement</option><option>Other Injection</option></select></div></div>
+      <div class="mf"><label>Vaccine / Injection Name *</label><input type="text" id="vc-name" placeholder="e.g. Influenza (Fluzone), Insulin Glargine" /></div>
+      <div class="fr c2"><div class="mf"><label>Dose / Lot Number</label><input type="text" id="vc-dose" placeholder="e.g. 0.5 mL / Lot #ABC123" /></div><div class="mf"><label>Route</label><select id="vc-route"><option>IM (Intramuscular)</option><option>SubQ (Subcutaneous)</option><option>Intradermal</option><option>IV (Intravenous)</option><option>Nasal</option><option>Oral</option></select></div></div>
+      <div class="fr c2"><div class="mf"><label>Site</label><select id="vc-site"><option>Left deltoid</option><option>Right deltoid</option><option>Left anterolateral thigh</option><option>Right anterolateral thigh</option><option>Left abdomen</option><option>Right abdomen</option><option>Other</option></select></div><div class="mf"><label>Administered By</label><input type="text" id="vc-admin" placeholder="Name / credential" /></div></div>
+      <div class="mf"><label>Notes / Observations</label><textarea id="vc-notes" placeholder="Post-admin observations, next dose due..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-vaccine')">Cancel</button><button class="btn primary" onclick="saveVaccine()">Add Record</button></div>
+  </div>
+</div>
+
+<!-- EKG -->
+<div class="overlay hidden" id="modal-ekg">
+  <div class="modal wide">
+    <div class="modal-head"><h2>📈 Record EKG</h2><button class="modal-x" onclick="closeM('modal-ekg')">✕</button></div>
+    <div class="modal-body">
+      <div class="fr c3"><div class="mf"><label>Date *</label><input type="date" id="ek-date" /></div><div class="mf"><label>Time</label><input type="time" id="ek-time" /></div><div class="mf"><label>Rhythm *</label><select id="ek-rhythm"><option>Normal Sinus Rhythm (NSR)</option><option>Sinus Tachycardia</option><option>Sinus Bradycardia</option><option>Atrial Fibrillation (AFib)</option><option>Atrial Flutter</option><option>SVT</option><option>Ventricular Tachycardia (VTach)</option><option>Ventricular Fibrillation (VFib)</option><option>1st Degree Heart Block</option><option>2nd Degree Heart Block</option><option>3rd Degree Heart Block</option><option>LBBB</option><option>RBBB</option><option>PVCs</option><option>PACs</option><option>Other</option></select></div></div>
+      <div class="fr c2"><div class="mf"><label>Heart Rate (bpm)</label><input type="number" id="ek-hr" placeholder="72" /></div><div class="mf"><label>PR Interval (ms)</label><input type="number" id="ek-pr" placeholder="160" /></div></div>
+      <div class="fr c3"><div class="mf"><label>QRS Duration (ms)</label><input type="number" id="ek-qrs" placeholder="80" /></div><div class="mf"><label>QT Interval (ms)</label><input type="number" id="ek-qt" placeholder="400" /></div><div class="mf"><label>QTc (ms)</label><input type="number" id="ek-qtc" placeholder="420" /></div></div>
+      <div class="fr c2"><div class="mf"><label>Axis</label><select id="ek-axis"><option>Normal Axis</option><option>Left Axis Deviation (LAD)</option><option>Right Axis Deviation (RAD)</option><option>Extreme Axis</option></select></div><div class="mf"><label>ST Changes</label><select id="ek-st"><option>None</option><option>ST Elevation (STEMI pattern)</option><option>ST Depression</option><option>Nonspecific ST changes</option></select></div></div>
+      <div class="mf"><label>Interpretation / Findings *</label><textarea id="ek-interp" placeholder="Full EKG interpretation, clinical correlation..." style="min-height:90px"></textarea></div>
+      <div class="mf"><label>Ordered / Interpreted By</label><input type="text" id="ek-prov" placeholder="Student name / provider" /></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-ekg')">Cancel</button><button class="btn primary" onclick="saveEKG()">Save EKG</button></div>
+  </div>
+</div>
+
+<!-- NOTE -->
+<div class="overlay hidden" id="modal-note">
+  <div class="modal wide">
+    <div class="modal-head"><h2>📝 Clinical Note</h2><button class="modal-x" onclick="closeM('modal-note')">✕</button></div>
+    <div class="modal-body">
+      <div class="fr c2"><div class="mf"><label>Note Type *</label><select id="nt-type"><option>Progress Note</option><option>SOAP Note</option><option>Admission Note</option><option>Discharge Note</option><option>Procedure Note</option><option>Nursing Note</option><option>Assessment Note</option><option>Telephone/Triage Note</option><option>Referral Note</option><option>Other</option></select></div><div class="mf"><label>Author</label><input type="text" id="nt-author" /></div></div>
+      <div class="mf"><label>Note Content *</label><textarea id="nt-content" style="min-height:180px" placeholder="Document your clinical note here...
+
+SOAP format:
+S (Subjective): Chief complaint, patient history
+O (Objective): Vitals, exam findings, labs
+A (Assessment): Clinical impression / diagnosis
+P (Plan): Treatment, orders, follow-up"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-note')">Cancel</button><button class="btn primary" onclick="saveNote()">Save Note</button></div>
+  </div>
+</div>
+
+<!-- INTAKE -->
+<div class="overlay hidden" id="modal-intake">
+  <div class="modal wide">
+    <div class="modal-head"><h2>📋 Full Patient Intake</h2><button class="modal-x" onclick="closeM('modal-intake')">✕</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Chief Complaint</label><input type="text" id="in-cc" placeholder="Primary reason for visit" /></div>
+      <div class="mf"><label>History of Present Illness (HPI)</label><textarea id="in-hpi" placeholder="Onset, Location, Duration, Character, Aggravating/Alleviating, Radiation, Timing, Severity..." style="min-height:90px"></textarea></div>
+      <div class="mf"><label>Review of Systems (ROS)</label><textarea id="in-ros" placeholder="Constitutional, Cardiovascular, Respiratory, GI, Neuro... (document positive and negative findings)" style="min-height:90px"></textarea></div>
+      <div class="mf"><label>Physical Examination</label><textarea id="in-exam" placeholder="General: Alert and oriented x3, no acute distress.&#10;HEENT: &#10;Cardiovascular: &#10;Pulmonary: &#10;Abdomen: &#10;Extremities: &#10;Skin: " style="min-height:120px"></textarea></div>
+      <div class="fr c2">
+        <div class="mf"><label>Assessment / Diagnosis</label><textarea id="in-assess" placeholder="1. Primary diagnosis&#10;2. Secondary problems"></textarea></div>
+        <div class="mf"><label>Plan</label><textarea id="in-plan" placeholder="1. Medications&#10;2. Labs / imaging&#10;3. Referrals&#10;4. Patient education&#10;5. Follow-up"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-intake')">Cancel</button><button class="btn primary" onclick="saveIntake()">Save Intake Note</button></div>
+  </div>
+</div>
+
+<!-- EDIT DEMOGRAPHICS -->
+<div class="overlay hidden" id="modal-edit-demo">
+  <div class="modal">
+    <div class="modal-head"><h2>✏️ Edit Demographics</h2><button class="modal-x" onclick="closeM('modal-edit-demo')">✕</button></div>
+    <div class="modal-body">
+      <div class="fr c2"><div class="mf"><label>First Name</label><input type="text" id="ed-first" /></div><div class="mf"><label>Last Name</label><input type="text" id="ed-last" /></div></div>
+      <div class="fr c3"><div class="mf"><label>DOB</label><input type="date" id="ed-dob" /></div><div class="mf"><label>Sex</label><select id="ed-sex"><option>Male</option><option>Female</option><option>Non-binary</option><option>Other</option></select></div><div class="mf"><label>Blood Type</label><select id="ed-blood"><option value="">Unknown</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div></div>
+      <div class="fr c2"><div class="mf"><label>Phone</label><input type="tel" id="ed-phone" /></div><div class="mf"><label>Email</label><input type="email" id="ed-email" /></div></div>
+      <div class="mf"><label>Address</label><input type="text" id="ed-addr" /></div>
+      <div class="fr c2"><div class="mf"><label>Insurance</label><input type="text" id="ed-ins" /></div><div class="mf"><label>Emergency Contact</label><input type="text" id="ed-emerg" /></div></div>
+      <div class="mf"><label>Primary Provider</label><input type="text" id="ed-prov" /></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-edit-demo')">Cancel</button><button class="btn primary" onclick="saveEditDemo()">Save Changes</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// FIREBASE CONFIG
+// ═══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBGuRfHMPxC7QymL8PZowIHDXYExqHSt00",
+  authDomain: "medlearn-emr.firebaseapp.com",
+  projectId: "medlearn-emr",
+  storageBucket: "medlearn-emr.firebasestorage.app",
+  messagingSenderId: "782880917141",
+  appId: "1:782880917141:web:a8e97c055a890517e17d9c",
+  measurementId: "G-SY2695FPHR"
+};
+
+// CLASS REGISTRATION CODE — change this to share with your students
+const CLASS_CODE = "MEDLEARN2024";
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let currentUser = null;
+let currentUserProfile = null;
+let currentPatient = null;
+let allPatients = [];
+let unsubPatients = null;
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+const calcAge = dob => { if (!dob) return '—'; const b = new Date(dob), n = new Date(); let a = n.getFullYear() - b.getFullYear(); if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) a--; return a; };
+const fmtDate = d => { if (!d) return '—'; try { return new Date(d).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}); } catch(e){return d;} };
+const fmtDT = d => { if (!d) return '—'; try { const dt = d.toDate ? d.toDate() : new Date(d); return dt.toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}); } catch(e){return d;} };
+const avatarColor = n => { const c=['#2f81f7','#3fb950','#d29922','#a371f7','#39d0d8','#f85149','#e3b341']; let h=0; for(let i=0;i<n.length;i++) h=n.charCodeAt(i)+((h<<5)-h); return c[Math.abs(h)%c.length]; };
+const initials = p => ((p.first||'?')[0]+(p.last||'?')[0]).toUpperCase();
+const genMRN = () => 'MRN-' + Date.now().toString(36).toUpperCase().slice(-6);
+const today = () => new Date().toISOString().split('T')[0];
+const nowTime = () => new Date().toTimeString().slice(0,5);
+
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = (type==='success'?'✓ ':type==='error'?'✕ ':'ℹ ') + msg;
+  el.className = 'toast ' + type + ' show';
+  setTimeout(() => el.className = 'toast ' + type, 3000);
+}
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+auth.onAuthStateChanged(async user => {
+  document.getElementById('loading-screen').style.display = 'none';
+  if (user) {
+    currentUser = user;
+    // Load user profile
+    const snap = await db.collection('users').doc(user.uid).get();
+    if (snap.exists) {
+      currentUserProfile = snap.data();
+    } else {
+      currentUserProfile = { displayName: user.displayName || user.email, role: 'student' };
+    }
+    showApp();
+  } else {
+    currentUser = null;
+    currentUserProfile = null;
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('form-login').classList.toggle('active', tab==='login');
+  document.getElementById('form-register').classList.toggle('active', tab==='register');
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('reg-error').style.display = 'none';
+}
+
+async function doLogin() {
+  const email = document.getElementById('li-email').value.trim();
+  const pass = document.getElementById('li-pass').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+  if (!email || !pass) { showAuthError('login', 'Please enter your email and password.'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch(e) {
+    showAuthError('login', friendlyAuthError(e.code));
+    btn.disabled = false; btn.textContent = 'Sign In →';
+  }
+}
+
+async function doRegister() {
+  const first = document.getElementById('rg-first').value.trim();
+  const last = document.getElementById('rg-last').value.trim();
+  const email = document.getElementById('rg-email').value.trim();
+  const pass = document.getElementById('rg-pass').value;
+  const role = document.getElementById('rg-role').value;
+  const code = document.getElementById('rg-code').value.trim().toUpperCase();
+  const btn = document.getElementById('btn-register');
+  if (!first || !last) { showAuthError('reg', 'Please enter your first and last name.'); return; }
+  if (!email) { showAuthError('reg', 'Please enter your email address.'); return; }
+  if (pass.length < 6) { showAuthError('reg', 'Password must be at least 6 characters.'); return; }
+  if (code !== CLASS_CODE) { showAuthError('reg', 'Invalid class registration code. Please check with your instructor.'); return; }
+  btn.disabled = true; btn.textContent = 'Creating account...';
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.updateProfile({ displayName: first + ' ' + last });
+    await db.collection('users').doc(cred.user.uid).set({
+      displayName: first + ' ' + last, firstName: first, lastName: last,
+      email, role, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast(`Welcome, ${first}! Account created successfully.`);
+  } catch(e) {
+    showAuthError('reg', friendlyAuthError(e.code));
+    btn.disabled = false; btn.textContent = 'Create Account →';
+  }
+}
+
+function showAuthError(form, msg) {
+  const id = form === 'login' ? 'login-error' : 'reg-error';
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+}
+function friendlyAuthError(code) {
+  const map = { 'auth/user-not-found':'No account found with that email.', 'auth/wrong-password':'Incorrect password.', 'auth/email-already-in-use':'An account with that email already exists.', 'auth/invalid-email':'Please enter a valid email address.', 'auth/weak-password':'Password must be at least 6 characters.', 'auth/too-many-requests':'Too many attempts. Please try again later.' };
+  return map[code] || 'An error occurred. Please try again.';
+}
+
+function doLogout() {
+  if (confirm('Sign out?')) { if (unsubPatients) unsubPatients(); auth.signOut(); }
+}
+
+// ═══════════════════════════════════════════
+// APP INIT
+// ═══════════════════════════════════════════
+function showApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  const name = currentUserProfile?.displayName || currentUser.email;
+  const role = currentUserProfile?.role || 'student';
+  const ava = (name.split(' ').map(w=>w[0]).join('').slice(0,2)).toUpperCase();
+  document.getElementById('user-ava').textContent = ava;
+  document.getElementById('user-ava').style.background = avatarColor(name);
+  document.getElementById('user-name-display').textContent = name;
+  document.getElementById('user-role-display').textContent = role === 'instructor' ? 'Instructor' : 'Student Clinician';
+  document.getElementById('dash-greeting').textContent = `Welcome back, ${name.split(' ')[0]}. ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.`;
+  // Set default author for notes
+  document.getElementById('nt-author').value = name;
+  document.getElementById('ek-prov').value = name;
+  subscribePatients();
+}
+
+// ═══════════════════════════════════════════
+// REAL-TIME PATIENT SUBSCRIPTION
+// ═══════════════════════════════════════════
+function subscribePatients() {
+  unsubPatients = db.collection('patients').orderBy('createdAt','desc').onSnapshot(snap => {
+    allPatients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    refreshDashboard();
+    refreshSidebarRecents();
+    // If a patient is open, refresh their data too
+    if (currentPatient) {
+      const updated = allPatients.find(p => p.id === currentPatient.id);
+      if (updated) { currentPatient = updated; renderAllTabs(); renderPatientHeader(); }
+    }
+  }, err => {
+    console.error(err);
+    toast('Database connection error. Check your Firebase rules.', 'error');
+  });
+}
+
+// ═══════════════════════════════════════════
+// PAGES
+// ═══════════════════════════════════════════
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+  document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el => el.classList.remove('active'));
+  const pg = document.getElementById('page-' + p);
+  if (pg) pg.classList.add('active');
+  const nav = document.getElementById('nav-' + p);
+  if (nav) nav.classList.add('active');
+}
+function requirePatient(modalId) {
+  if (!currentPatient) { toast('Please select a patient first', 'error'); return; }
+  openM(modalId);
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+function refreshDashboard() {
+  const today_str = new Date().toDateString();
+  let totalMeds = 0, totalAllergies = 0, todayNotes = 0;
+  allPatients.forEach(p => {
+    totalMeds += (p.medications||[]).filter(m=>m.status==='Active').length;
+    totalAllergies += (p.allergies||[]).length;
+    todayNotes += (p.notes||[]).filter(n => { try { return (n.time?.toDate ? n.time.toDate() : new Date(n.time)).toDateString() === today_str; } catch(e){return false;} }).length;
+  });
+  document.getElementById('s-pts').textContent = allPatients.length;
+  document.getElementById('s-al').textContent = totalAllergies;
+  document.getElementById('s-meds').textContent = totalMeds;
+  document.getElementById('s-notes').textContent = todayNotes;
+
+  const tbody = document.getElementById('pt-tbody');
+  if (!allPatients.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No patients registered yet. Click "Register Patient" to add the first one.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allPatients.map(p => `
+    <tr onclick="loadPatient('${p.id}')">
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div class="search-avatar" style="background:${avatarColor((p.first||'')+(p.last||''))};width:28px;height:28px;font-size:11px">${initials(p)}</div>
+        <span style="font-weight:500">${p.last}, ${p.first}</span>
+      </div></td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${p.mrn}</td>
+      <td style="font-size:12px">${fmtDate(p.dob)} <span style="color:var(--text3)">(${calcAge(p.dob)}y)</span></td>
+      <td>${(p.allergies||[]).length ? `<span class="badge red">⚠ ${p.allergies.length} allerg${p.allergies.length>1?'ies':'y'}</span>` : '<span class="badge green">NKDA</span>'}</td>
+      <td style="font-family:var(--mono);font-size:12px">${(p.medications||[]).filter(m=>m.status==='Active').length}</td>
+      <td style="font-size:11px;color:var(--text3)">${p.registeredBy||'—'}</td>
+    </tr>`).join('');
+}
+
+function refreshSidebarRecents() {
+  document.getElementById('sidebar-recents').innerHTML = allPatients.slice(0,6).map(p => `
+    <div class="recent-item" onclick="loadPatient('${p.id}')">
+      <div class="recent-ava" style="background:${avatarColor((p.first||'')+(p.last||''))}">${initials(p)}</div>
+      <span class="recent-name">${p.last}, ${p.first}</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// PATIENT SEARCH
+// ═══════════════════════════════════════════
+function searchPatients(q) {
+  const dd = document.getElementById('search-dd');
+  if (!q || q.length < 1) { dd.classList.remove('open'); return; }
+  const results = allPatients.filter(p => `${p.first} ${p.last} ${p.mrn}`.toLowerCase().includes(q.toLowerCase())).slice(0,8);
+  if (!results.length) { dd.innerHTML = '<div style="padding:14px;color:var(--text3);text-align:center;font-size:13px">No patients found</div>'; dd.classList.add('open'); return; }
+  dd.innerHTML = results.map(p => `
+    <div class="search-result" onclick="loadPatient('${p.id}');document.getElementById('pt-search').value='';document.getElementById('search-dd').classList.remove('open')">
+      <div class="search-avatar" style="background:${avatarColor((p.first||'')+(p.last||''))}">${initials(p)}</div>
+      <div><div class="search-info-name">${p.last}, ${p.first}</div><div class="search-info-meta">${p.mrn} · DOB ${fmtDate(p.dob)} · ${p.gender||p.sex||''}</div></div>
+      ${(p.allergies||[]).length ? '<span class="badge red" style="margin-left:auto">⚠ Allergy</span>' : ''}
+    </div>`).join('');
+  dd.classList.add('open');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.topbar-search-wrap')) document.getElementById('search-dd').classList.remove('open'); });
+document.getElementById('pt-search').addEventListener('keydown', e => { if(e.key==='Escape') document.getElementById('search-dd').classList.remove('open'); });
+
+// ═══════════════════════════════════════════
+// LOAD PATIENT
+// ═══════════════════════════════════════════
+function loadPatient(id) {
+  currentPatient = allPatients.find(p => p.id === id);
+  if (!currentPatient) return;
+  showPage('chart');
+  document.getElementById('no-pt').style.display = 'none';
+  document.getElementById('pt-chart').style.display = 'flex';
+  renderPatientHeader();
+  setTab('overview');
+  renderAllTabs();
+}
+
+function renderPatientHeader() {
+  const p = currentPatient;
+  const ava = document.getElementById('ch-ava');
+  ava.style.background = avatarColor((p.first||'')+(p.last||''));
+  ava.textContent = initials(p);
+  document.getElementById('ch-name').textContent = `${p.last}, ${p.first}`;
+  document.getElementById('ch-mrn').textContent = '🪪 ' + p.mrn;
+  document.getElementById('ch-dob').textContent = `📅 ${fmtDate(p.dob)} (${calcAge(p.dob)}y)`;
+  document.getElementById('ch-sex').textContent = (p.gender||p.sex) ? '⚧ '+(p.gender||p.sex) : '';
+  document.getElementById('ch-blood').textContent = p.blood ? '🩸 '+p.blood : '';
+  document.getElementById('ch-prov').textContent = p.provider ? '👨‍⚕️ '+p.provider : '';
+  const bar = document.getElementById('allergy-bar');
+  if ((p.allergies||[]).length) {
+    bar.style.display = 'flex';
+    document.getElementById('allergy-bar-text').textContent = 'ALLERGIES: ' + p.allergies.map(a=>`${a.allergen} (${a.reaction||a.severity})`).join(' | ');
+  } else bar.style.display = 'none';
+  updateTabCounts();
+}
+
+function updateTabCounts() {
+  const p = currentPatient;
+  document.getElementById('tc-v').textContent = (p.vitals||[]).length;
+  document.getElementById('tc-m').textContent = (p.medications||[]).length;
+  document.getElementById('tc-a').textContent = (p.allergies||[]).length;
+  document.getElementById('tc-h').textContent = (p.pmh||[]).length + (p.surgery||[]).length + (p.family||[]).length;
+  document.getElementById('tc-p').textContent = (p.procedures||[]).length;
+  document.getElementById('tc-va').textContent = (p.vaccines||[]).length;
+  document.getElementById('tc-e').textContent = (p.ekgs||[]).length;
+  document.getElementById('tc-n').textContent = (p.notes||[]).length;
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+document.querySelectorAll('.c-tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+function setTab(name) {
+  document.querySelectorAll('.c-tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id==='tab-'+name));
+  // Add active style inline since we removed global .tab-content
+  document.querySelectorAll('.tab-content').forEach(c => c.style.display = c.id==='tab-'+name ? 'block' : 'none');
+}
+
+function renderAllTabs() {
+  renderOverview(); renderVitals(); renderMeds(); renderAllergies();
+  renderPMH(); renderProcedures(); renderVaccines(); renderEKGs(); renderNotes();
+}
+
+// ═══════════════════════════════════════════
+// OVERVIEW TAB
+// ═══════════════════════════════════════════
+function renderOverview() {
+  const p = currentPatient;
+  const el = document.getElementById('tab-overview');
+  const lastV = (p.vitals||[]).slice(-1)[0];
+  const activeMeds = (p.medications||[]).filter(m=>m.status==='Active');
+  el.innerHTML = `
+  <div class="two-col">
+    <div>
+      <div class="sc">
+        <div class="sc-head"><h3>📋 Demographics</h3><button class="btn sm" onclick="openEditDemo()">Edit</button></div>
+        <div class="sc-body"><div class="data-grid">
+          ${[{l:'MRN',v:p.mrn,m:true},{l:'Date of Birth',v:fmtDate(p.dob)},{l:'Age',v:calcAge(p.dob)+'y'},{l:'Sex',v:(p.gender||p.sex||'—')},{l:'Blood Type',v:p.blood||'—'},{l:'Phone',v:p.phone||'—'},{l:'Insurance',v:p.insurance||p.ins||'—'},{l:'Provider',v:p.provider||'—'}].map(f=>`<div class="df"><label>${f.l}</label><div class="val${f.m?' mono':''}">${f.v}</div></div>`).join('')}
+        </div></div>
+      </div>
+      <div class="sc">
+        <div class="sc-head"><h3>⚠️ Allergies</h3><button class="btn sm" onclick="openM('modal-allergy')">+ Add</button></div>
+        <div class="sc-body">${!(p.allergies||[]).length ? '<div style="color:var(--green);font-size:13px">✓ No Known Drug Allergies (NKDA)</div>' :
+          p.allergies.map(a=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge ${a.severity?.includes('Life')||a.severity==='Severe'?'red':a.severity==='Moderate'?'yellow':'blue'}">${a.severity}</span><strong style="font-size:13px">${a.allergen}</strong><span style="color:var(--text2);font-size:12px">→ ${a.reaction||'—'}</span></div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="sc">
+        <div class="sc-head"><h3>💓 Latest Vitals</h3><button class="btn sm" onclick="openM('modal-vitals')">+ Record</button></div>
+        <div class="sc-body">${!lastV ? '<div class="empty-state" style="padding:8px"><div>No vitals recorded</div></div>' : `
+          <div class="vitals-grid">
+            ${lastV.sbp?`<div class="v-card"><div class="v-label">Blood Pressure</div><div class="v-val ${lastV.sbp>140||lastV.dbp>90?'v-high':lastV.sbp>130?'v-low':'v-normal'}" style="font-size:16px">${lastV.sbp}/${lastV.dbp}</div><div class="v-unit">mmHg</div></div>`:''}
+            ${lastV.hr?`<div class="v-card"><div class="v-label">Heart Rate</div><div class="v-val ${lastV.hr>100?'v-high':lastV.hr<60?'v-low':'v-normal'}" style="font-size:16px">${lastV.hr}</div><div class="v-unit">bpm</div></div>`:''}
+            ${lastV.spo2?`<div class="v-card"><div class="v-label">SpO2</div><div class="v-val ${lastV.spo2<95?'v-high':lastV.spo2<97?'v-low':'v-normal'}" style="font-size:16px">${lastV.spo2}</div><div class="v-unit">%</div></div>`:''}
+            ${lastV.temp?`<div class="v-card"><div class="v-label">Temperature</div><div class="v-val ${lastV.temp>100.4?'v-high':''} " style="font-size:16px">${lastV.temp}</div><div class="v-unit">°F</div></div>`:''}
+          </div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:8px">Recorded ${fmtDT(lastV.time)} by ${lastV.by}</div>`}
+        </div>
+      </div>
+      <div class="sc">
+        <div class="sc-head"><h3>💊 Active Medications</h3><button class="btn sm" onclick="openM('modal-med')">+ Add</button></div>
+        <div class="sc-body">${!activeMeds.length ? '<div class="empty-state" style="padding:8px"><div>No active medications</div></div>' :
+          activeMeds.map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)"><div><div style="font-weight:500;font-size:13px">${m.name} ${m.dose}</div><div style="font-size:11px;color:var(--text2)">${m.route} · ${m.freq}</div></div><span class="badge green">${m.status}</span></div>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// VITALS TAB
+// ═══════════════════════════════════════════
+function renderVitals() {
+  const vitals = currentPatient.vitals || [];
+  const el = document.getElementById('tab-vitals');
+  el.innerHTML = `<div class="sc"><div class="sc-head"><h3>💓 Vital Signs History</h3><button class="btn primary sm" onclick="openM('modal-vitals')">+ Record Vitals</button></div><div class="sc-body">${
+    !vitals.length ? '<div class="empty-state"><div class="empty-icon">💓</div>No vitals recorded yet</div>' :
+    vitals.slice().reverse().map((v,ri)=>{
+      const i = vitals.length-1-ri;
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:11px;font-weight:600;color:var(--text2)">Entry #${vitals.length-ri}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;color:var(--text3);font-family:var(--mono)">${fmtDT(v.time)} · by ${v.by}</span>
+            <button class="btn danger sm" onclick="deleteSubItem('vitals',${i})">× Remove</button>
+          </div>
+        </div>
+        <div class="vitals-grid">
+          ${v.sbp?`<div class="v-card"><div class="v-label">BP</div><div class="v-val ${v.sbp>140||v.dbp>90?'v-high':v.sbp>130?'v-low':'v-normal'}">${v.sbp}/${v.dbp}</div><div class="v-unit">mmHg</div></div>`:''}
+          ${v.hr?`<div class="v-card"><div class="v-label">HR</div><div class="v-val ${v.hr>100?'v-high':v.hr<60?'v-low':'v-normal'}">${v.hr}</div><div class="v-unit">bpm</div></div>`:''}
+          ${v.rr?`<div class="v-card"><div class="v-label">RR</div><div class="v-val">${v.rr}</div><div class="v-unit">/min</div></div>`:''}
+          ${v.spo2?`<div class="v-card"><div class="v-label">SpO2</div><div class="v-val ${v.spo2<95?'v-high':v.spo2<97?'v-low':'v-normal'}">${v.spo2}</div><div class="v-unit">%</div></div>`:''}
+          ${v.temp?`<div class="v-card"><div class="v-label">Temp</div><div class="v-val ${v.temp>100.4?'v-high':''}">${v.temp}</div><div class="v-unit">°F</div></div>`:''}
+          ${v.wt||v.weight?`<div class="v-card"><div class="v-label">Weight</div><div class="v-val">${v.wt||v.weight}</div><div class="v-unit">lbs</div></div>`:''}
+          ${v.ht||v.height?`<div class="v-card"><div class="v-label">Height</div><div class="v-val">${v.ht||v.height}</div><div class="v-unit">in</div></div>`:''}
+          ${v.pain!==undefined&&v.pain!==''?`<div class="v-card"><div class="v-label">Pain</div><div class="v-val ${v.pain>=7?'v-high':v.pain>=4?'v-low':''}">${v.pain}/10</div></div>`:''}
+        </div>
+        ${v.notes?`<div style="margin-top:8px;font-size:11px;color:var(--text2)">📝 ${v.notes}</div>`:''}
+      </div>`;
+    }).join('')
+  }</div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// MEDICATIONS TAB
+// ═══════════════════════════════════════════
+function renderMeds() {
+  const meds = currentPatient.medications || [];
+  const el = document.getElementById('tab-medications');
+  el.innerHTML = `<div class="sc"><div class="sc-head"><h3>💊 Medication List</h3><button class="btn primary sm" onclick="openM('modal-med')">+ Add Medication</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Medication</th><th>Dose</th><th>Route</th><th>Frequency</th><th>Indication</th><th>Status</th><th>By</th><th></th></tr></thead><tbody>${
+    !meds.length ? `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">💊</div>No medications documented</div></td></tr>` :
+    meds.map((m,i)=>`<tr><td><strong>${m.name}</strong></td><td style="font-family:var(--mono)">${m.dose}</td><td>${m.route}</td><td>${m.freq}</td><td style="color:var(--text2)">${m.ind||m.indication||'—'}</td><td><span class="badge ${m.status==='Active'?'green':m.status==='Discontinued'?'red':'yellow'}">${m.status}</span></td><td style="font-size:11px;color:var(--text2)">${m.by||'—'}</td><td><button class="btn danger sm" onclick="deleteSubItem('medications',${i})">×</button></td></tr>`).join('')
+  }</tbody></table></div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// ALLERGIES TAB
+// ═══════════════════════════════════════════
+function renderAllergies() {
+  const allergies = currentPatient.allergies || [];
+  const el = document.getElementById('tab-allergies');
+  el.innerHTML = `<div class="sc"><div class="sc-head"><h3>⚠️ Allergy List</h3><button class="btn primary sm" onclick="openM('modal-allergy')">+ Add Allergy</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Allergen</th><th>Type</th><th>Reaction</th><th>Severity</th><th>Onset</th><th>By</th><th></th></tr></thead><tbody>${
+    !allergies.length ? `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">✓</div>No Known Drug Allergies (NKDA)</div></td></tr>` :
+    allergies.map((a,i)=>`<tr><td><strong>${a.allergen||a.name}</strong></td><td><span class="badge blue">${a.type}</span></td><td>${a.reaction||a.react||'—'}</td><td><span class="badge ${(a.severity||'').includes('Life')||(a.severity)==='Severe'?'red':(a.severity)==='Moderate'?'yellow':'blue'}">${a.severity}</span></td><td style="color:var(--text2)">${a.onset||'—'}</td><td style="font-size:11px;color:var(--text2)">${a.by||'—'}</td><td><button class="btn danger sm" onclick="deleteSubItem('allergies',${i})">×</button></td></tr>`).join('')
+  }</tbody></table></div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// PMH TAB
+// ═══════════════════════════════════════════
+function renderPMH() {
+  const p = currentPatient;
+  const el = document.getElementById('tab-pmh');
+  el.innerHTML = `
+  <div class="two-col">
+    <div>
+      <div class="sc"><div class="sc-head"><h3>🏥 Past Medical History</h3><button class="btn primary sm" onclick="openM('modal-pmh')">+ Add</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Condition</th><th>Status</th><th>Year</th><th>Notes</th><th></th></tr></thead><tbody>${
+        !(p.pmh||[]).length?`<tr><td colspan="5"><div class="empty-state" style="padding:12px">None documented</div></td></tr>`:
+        p.pmh.map((h,i)=>`<tr><td><strong>${h.condition||h.cond}</strong></td><td><span class="badge ${h.status==='Active'||h.status==='Chronic'?'red':'green'}">${h.status}</span></td><td style="color:var(--text2)">${h.year||h.yr||'—'}</td><td style="color:var(--text2);max-width:160px;font-size:11px">${h.notes||'—'}</td><td><button class="btn danger sm" onclick="deleteSubItem('pmh',${i})">×</button></td></tr>`).join('')
+      }</tbody></table></div></div>
+      <div class="sc"><div class="sc-head"><h3>🔪 Surgical History</h3><button class="btn primary sm" onclick="openM('modal-surgery')">+ Add</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Procedure</th><th>Year</th><th>Notes</th><th></th></tr></thead><tbody>${
+        !(p.surgery||[]).length?`<tr><td colspan="4"><div class="empty-state" style="padding:12px">None documented</div></td></tr>`:
+        p.surgery.map((s,i)=>`<tr><td><strong>${s.procedure||s.proc}</strong></td><td style="color:var(--text2)">${s.year||s.yr||'—'}</td><td style="color:var(--text2);font-size:11px">${s.notes||'—'}</td><td><button class="btn danger sm" onclick="deleteSubItem('surgery',${i})">×</button></td></tr>`).join('')
+      }</tbody></table></div></div>
+    </div>
+    <div>
+      <div class="sc"><div class="sc-head"><h3>👨‍👩‍👧 Family History</h3><button class="btn primary sm" onclick="openM('modal-family')">+ Add</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Relation</th><th>Condition</th><th>Notes</th><th></th></tr></thead><tbody>${
+        !(p.family||[]).length?`<tr><td colspan="4"><div class="empty-state" style="padding:12px">None documented</div></td></tr>`:
+        p.family.map((f,i)=>`<tr><td>${f.relation||f.rel}</td><td><strong>${f.condition||f.cond}</strong></td><td style="color:var(--text2);font-size:11px">${f.notes||'—'}</td><td><button class="btn danger sm" onclick="deleteSubItem('family',${i})">×</button></td></tr>`).join('')
+      }</tbody></table></div></div>
+      <div class="sc"><div class="sc-head"><h3>👤 Social History</h3><button class="btn primary sm" onclick="openSocialModal()">Edit</button></div><div class="sc-body">${
+        !p.social ? '<div class="empty-state"><div class="empty-icon">👤</div>No social history documented</div>' :
+        `<div class="data-grid">${Object.entries({Tobacco:p.social.tobacco||p.social.tob,Alcohol:p.social.alcohol||p.social.alc,'Drug Use':p.social.drug||p.social.drugs,Exercise:p.social.exercise||p.social.ex,Occupation:p.social.occupation||p.social.occ,'Marital Status':p.social.marital||p.social.mar,Diet:p.social.diet}).filter(([k,v])=>v).map(([k,v])=>`<div class="df"><label>${k}</label><div class="val">${v}</div></div>`).join('')}${p.social.notes?`<div class="df" style="grid-column:1/-1"><label>Notes</label><div class="val">${p.social.notes}</div></div>`:''}</div>`
+      }</div></div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// PROCEDURES TAB
+// ═══════════════════════════════════════════
+function renderProcedures() {
+  const procs = currentPatient.procedures || [];
+  const el = document.getElementById('tab-procedures');
+  el.innerHTML = `<div class="sc"><div class="sc-head"><h3>🔬 Procedures & Diagnostics</h3><button class="btn primary sm" onclick="openM('modal-procedure')">+ Add</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Date</th><th>Procedure</th><th>Type</th><th>Provider</th><th>Results</th><th>Status</th><th></th></tr></thead><tbody>${
+    !procs.length?`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🔬</div>No procedures documented</div></td></tr>`:
+    procs.map((pr,i)=>`<tr><td style="font-size:11px;font-family:var(--mono)">${fmtDate(pr.date)}</td><td><strong>${pr.name}</strong></td><td><span class="badge blue">${pr.type}</span></td><td style="color:var(--text2)">${pr.provider||pr.prov||'—'}</td><td style="color:var(--text2);font-size:11px;max-width:180px">${pr.results||'—'}</td><td><span class="badge ${pr.status==='Completed'?'green':pr.status==='Cancelled'?'red':'yellow'}">${pr.status}</span></td><td><button class="btn danger sm" onclick="deleteSubItem('procedures',${i})">×</button></td></tr>`).join('')
+  }</tbody></table></div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// VACCINES TAB
+// ═══════════════════════════════════════════
+function renderVaccines() {
+  const vaccs = currentPatient.vaccines || [];
+  const el = document.getElementById('tab-vaccines');
+  el.innerHTML = `<div class="sc"><div class="sc-head"><h3>💉 Vaccines & Injections</h3><button class="btn primary sm" onclick="openM('modal-vaccine')">+ Add</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Date</th><th>Name</th><th>Type</th><th>Dose/Lot</th><th>Site</th><th>Route</th><th>Given By</th><th></th></tr></thead><tbody>${
+    !vaccs.length?`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">💉</div>No vaccines or injections documented</div></td></tr>`:
+    vaccs.map((v,i)=>`<tr><td style="font-size:11px;font-family:var(--mono)">${fmtDate(v.date)}</td><td><strong>${v.name}</strong></td><td><span class="badge blue">${v.type}</span></td><td style="color:var(--text2);font-size:11px">${v.dose||'—'}</td><td style="color:var(--text2)">${v.site||'—'}</td><td style="color:var(--text2)">${v.route||'—'}</td><td style="color:var(--text2);font-size:11px">${v.admin||'—'}</td><td><button class="btn danger sm" onclick="deleteSubItem('vaccines',${i})">×</button></td></tr>`).join('')
+  }</tbody></table></div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// EKG TAB
+// ═══════════════════════════════════════════
+function renderEKGs() {
+  const ekgs = currentPatient.ekgs || [];
+  const el = document.getElementById('tab-ekg');
+  el.innerHTML = `<div class="sc"><div class="sc-head"><h3>📈 Electrocardiogram Records</h3><button class="btn primary sm" onclick="openM('modal-ekg')">+ Record EKG</button></div><div class="sc-body">${
+    !ekgs.length ? '<div class="empty-state"><div class="empty-icon">📈</div>No EKG records documented</div>' :
+    ekgs.slice().reverse().map((e,ri)=>{
+      const i = ekgs.length-1-ri;
+      return `<div class="ekg-record">
+        <canvas class="ekg-canvas" id="ekgc-${i}"></canvas>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px">
+          <div><div style="font-size:14px;font-weight:600;color:#52c46a">${e.rhythm}</div><div style="font-size:11px;color:#3a8a4a;margin-top:2px">Axis: ${e.axis} · ST: ${e.st}</div></div>
+          <button class="btn danger sm" onclick="deleteSubItem('ekgs',${i})">× Remove</button>
+        </div>
+        <div class="ekg-data">
+          <div class="ekg-d"><label>Date/Time</label><span>${fmtDate(e.date)} ${e.time||''}</span></div>
+          <div class="ekg-d"><label>HR</label><span>${e.hr||'—'} bpm</span></div>
+          <div class="ekg-d"><label>PR</label><span>${e.pr||e.ek_pr||'—'} ms</span></div>
+          <div class="ekg-d"><label>QRS</label><span>${e.qrs||'—'} ms</span></div>
+          <div class="ekg-d"><label>QT/QTc</label><span>${e.qt||'—'}/${e.qtc||'—'} ms</span></div>
+          <div class="ekg-d"><label>Provider</label><span>${e.provider||e.prov||'—'}</span></div>
+        </div>
+        ${e.interpretation||e.interp?`<div class="ekg-interp">${e.interpretation||e.interp}</div>`:''}
+      </div>`;
+    }).join('')
+  }</div></div>`;
+  setTimeout(() => {
+    (ekgs||[]).forEach((e,i) => drawEKG('ekgc-'+i, e.hr||72, e.rhythm||''));
+  }, 60);
+}
+
+function drawEKG(id, hr, rhythm) {
+  const c = document.getElementById(id); if (!c) return;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = c.offsetWidth * dpr; c.height = 110 * dpr;
+  const ctx = c.getContext('2d'); ctx.scale(dpr, dpr);
+  const W = c.offsetWidth, H = 110, mid = H/2;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(30,70,35,0.5)'; ctx.lineWidth=0.5;
+  for(let x=0;x<W;x+=20){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=20){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  const bpm = parseInt(hr)||72;
+  const bw = Math.max(60, Math.round(W/(bpm/60*(W/180))));
+  const isAfib = rhythm.toLowerCase().includes('fibrillation')&&rhythm.toLowerCase().includes('atrial');
+  const isVfib = rhythm.toLowerCase().includes('ventricular fib');
+  ctx.strokeStyle='#40c060'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(0,mid);
+  let x=0;
+  while(x<W) {
+    if(isVfib) {
+      for(let j=0;j<bw;j++) ctx.lineTo(x+j,mid+(Math.random()-0.5)*40);
+    } else {
+      ctx.lineTo(x+bw*0.1,mid);
+      if(!isAfib){ctx.lineTo(x+bw*0.18,mid-5);ctx.lineTo(x+bw*0.26,mid);}
+      else{for(let j=0;j<bw*0.16;j+=3)ctx.lineTo(x+bw*0.1+j,mid+(Math.random()-0.5)*5);}
+      ctx.lineTo(x+bw*0.33,mid);
+      ctx.lineTo(x+bw*0.37,mid+5);
+      ctx.lineTo(x+bw*0.42,mid-28);
+      ctx.lineTo(x+bw*0.47,mid+8);
+      ctx.lineTo(x+bw*0.53,mid);
+      ctx.lineTo(x+bw*0.63,mid-7);
+      ctx.lineTo(x+bw*0.73,mid);
+      ctx.lineTo(x+bw,mid);
+    }
+    x+=bw;
+  }
+  ctx.stroke();
+}
+
+// ═══════════════════════════════════════════
+// NOTES TAB
+// ═══════════════════════════════════════════
+function renderNotes() {
+  const notes = currentPatient.notes || [];
+  const el = document.getElementById('tab-notes');
+  el.innerHTML = `<div class="sc"><div class="sc-head"><h3>📝 Clinical Notes</h3><button class="btn primary sm" onclick="openM('modal-note')">+ Write Note</button></div><div class="sc-body">${
+    !notes.length ? '<div class="empty-state"><div class="empty-icon">📝</div>No clinical notes documented</div>' :
+    notes.slice().reverse().map((n,ri)=>{
+      const i=notes.length-1-ri;
+      return `<div class="note-card">
+        <div class="note-head">
+          <div><span class="note-author">${n.author||n.by||'Unknown'}</span><span class="badge blue" style="margin-left:8px">${n.type}</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span class="note-time">${fmtDT(n.time)}</span><button class="btn danger sm" onclick="deleteSubItem('notes',${i})">× Delete</button></div>
+        </div>
+        <div class="note-body">${n.content}</div>
+      </div>`;
+    }).join('')
+  }</div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// FIRESTORE UPDATE HELPERS
+// ═══════════════════════════════════════════
+async function updatePatient(data) {
+  if (!currentPatient) return;
+  try {
+    await db.collection('patients').doc(currentPatient.id).update(data);
+  } catch(e) { toast('Error saving: ' + e.message, 'error'); }
+}
+
+async function pushToArray(field, item) {
+  await updatePatient({ [field]: firebase.firestore.FieldValue.arrayUnion(item) });
+}
+
+async function deleteSubItem(field, index) {
+  if (!confirm('Remove this record?')) return;
+  const arr = [...(currentPatient[field]||[])];
+  arr.splice(index,1);
+  await updatePatient({ [field]: arr });
+  toast('Record removed');
+}
+
+// ═══════════════════════════════════════════
+// SAVE FUNCTIONS
+// ═══════════════════════════════════════════
+async function saveVitals() {
+  const item = {
+    sbp: document.getElementById('v-sbp').value, dbp: document.getElementById('v-dbp').value,
+    hr: document.getElementById('v-hr').value, rr: document.getElementById('v-rr').value,
+    spo2: document.getElementById('v-spo2').value, temp: document.getElementById('v-temp').value,
+    wt: document.getElementById('v-wt').value, ht: document.getElementById('v-ht').value,
+    pain: document.getElementById('v-pain').value, notes: document.getElementById('v-notes').value,
+    time: new Date().toISOString(), by: currentUserProfile?.displayName || currentUser.email
+  };
+  await pushToArray('vitals', item);
+  closeM('modal-vitals'); toast('Vitals recorded');
+  ['v-sbp','v-dbp','v-hr','v-rr','v-spo2','v-temp','v-wt','v-ht','v-pain','v-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveMed() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { toast('Medication name required','error'); return; }
+  await pushToArray('medications', {
+    name, dose: document.getElementById('m-dose').value, route: document.getElementById('m-route').value,
+    freq: document.getElementById('m-freq').value, status: document.getElementById('m-stat').value,
+    ind: document.getElementById('m-ind').value, start: document.getElementById('m-start').value,
+    stop: document.getElementById('m-stop').value, notes: document.getElementById('m-notes').value,
+    time: new Date().toISOString(), by: currentUserProfile?.displayName || currentUser.email
+  });
+  closeM('modal-med'); toast('Medication added');
+  ['m-name','m-dose','m-ind','m-start','m-stop','m-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveAllergy() {
+  const name = document.getElementById('a-name').value.trim();
+  if (!name) { toast('Allergen name required','error'); return; }
+  await pushToArray('allergies', {
+    allergen: name, type: document.getElementById('a-type').value, severity: document.getElementById('a-sev').value,
+    reaction: document.getElementById('a-react').value, onset: document.getElementById('a-onset').value,
+    notes: document.getElementById('a-notes').value,
+    time: new Date().toISOString(), by: currentUserProfile?.displayName || currentUser.email
+  });
+  closeM('modal-allergy'); toast('Allergy documented');
+  ['a-name','a-react','a-onset','a-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function savePMH() {
+  const cond = document.getElementById('pmh-cond').value.trim();
+  if (!cond) { toast('Condition required','error'); return; }
+  await pushToArray('pmh', { condition: cond, status: document.getElementById('pmh-stat').value, year: document.getElementById('pmh-yr').value, notes: document.getElementById('pmh-notes').value, time: new Date().toISOString(), by: currentUserProfile?.displayName || currentUser.email });
+  closeM('modal-pmh'); toast('Medical history added');
+  ['pmh-cond','pmh-yr','pmh-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveSurgery() {
+  const proc = document.getElementById('su-proc').value.trim();
+  if (!proc) { toast('Procedure required','error'); return; }
+  await pushToArray('surgery', { procedure: proc, year: document.getElementById('su-yr').value, notes: document.getElementById('su-notes').value, time: new Date().toISOString(), by: currentUserProfile?.displayName || currentUser.email });
+  closeM('modal-surgery'); toast('Surgical history added');
+  ['su-proc','su-yr','su-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveFamilyHx() {
+  const cond = document.getElementById('fh-cond').value.trim();
+  if (!cond) { toast('Condition required','error'); return; }
+  await pushToArray('family', { relation: document.getElementById('fh-rel').value, condition: cond, notes: document.getElementById('fh-notes').value, time: new Date().toISOString(), by: currentUserProfile?.displayName || currentUser.email });
+  closeM('modal-family'); toast('Family history added');
+  ['fh-cond','fh-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveSocial() {
+  await updatePatient({ social: {
+    tobacco: document.getElementById('soc-tob').value, alcohol: document.getElementById('soc-alc').value,
+    drug: document.getElementById('soc-drug').value, exercise: document.getElementById('soc-ex').value,
+    occupation: document.getElementById('soc-occ').value, marital: document.getElementById('soc-mar').value,
+    diet: document.getElementById('soc-diet').value, notes: document.getElementById('soc-notes').value
+  }});
+  closeM('modal-social'); toast('Social history saved');
+}
+
+async function saveProcedure() {
+  const name = document.getElementById('pr-name').value.trim();
+  if (!name) { toast('Procedure name required','error'); return; }
+  await pushToArray('procedures', { name, date: document.getElementById('pr-date').value, type: document.getElementById('pr-type').value, provider: document.getElementById('pr-prov').value, results: document.getElementById('pr-results').value, status: document.getElementById('pr-stat').value, time: new Date().toISOString(), by: currentUserProfile?.displayName || currentUser.email });
+  closeM('modal-procedure'); toast('Procedure added');
+  ['pr-name','pr-date','pr-prov','pr-results'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveVaccine() {
+  const name = document.getElementById('vc-name').value.trim();
+  if (!name) { toast('Name required','error'); return; }
+  await pushToArray('vaccines', { name, date: document.getElementById('vc-date').value, type: document.getElementById('vc-type').value, dose: document.getElementById('vc-dose').value, route: document.getElementById('vc-route').value, site: document.getElementById('vc-site').value, admin: document.getElementById('vc-admin').value, notes: document.getElementById('vc-notes').value, time: new Date().toISOString(), by: currentUserProfile?.displayName || currentUser.email });
+  closeM('modal-vaccine'); toast('Vaccine/injection recorded');
+  ['vc-name','vc-date','vc-dose','vc-admin','vc-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveEKG() {
+  const interp = document.getElementById('ek-interp').value.trim();
+  if (!interp) { toast('Interpretation required','error'); return; }
+  await pushToArray('ekgs', { date: document.getElementById('ek-date').value, time: document.getElementById('ek-time').value, rhythm: document.getElementById('ek-rhythm').value, hr: document.getElementById('ek-hr').value, pr: document.getElementById('ek-pr').value, qrs: document.getElementById('ek-qrs').value, qt: document.getElementById('ek-qt').value, qtc: document.getElementById('ek-qtc').value, axis: document.getElementById('ek-axis').value, st: document.getElementById('ek-st').value, interpretation: interp, provider: document.getElementById('ek-prov').value, recordedAt: new Date().toISOString(), by: currentUserProfile?.displayName || currentUser.email });
+  closeM('modal-ekg'); toast('EKG recorded');
+  ['ek-date','ek-time','ek-hr','ek-pr','ek-qrs','ek-qt','ek-qtc','ek-interp'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveNote() {
+  const content = document.getElementById('nt-content').value.trim();
+  if (!content) { toast('Note content required','error'); return; }
+  await pushToArray('notes', { type: document.getElementById('nt-type').value, author: document.getElementById('nt-author').value || (currentUserProfile?.displayName || currentUser.email), content, time: new Date().toISOString() });
+  closeM('modal-note'); toast('Note saved');
+  document.getElementById('nt-content').value = '';
+}
+
+async function saveIntake() {
+  const cc = document.getElementById('in-cc').value.trim();
+  if (!cc) { toast('Chief complaint required','error'); return; }
+  const parts = [
+    cc ? `CHIEF COMPLAINT:\n${cc}` : '',
+    document.getElementById('in-hpi').value.trim() ? `\nHPI:\n${document.getElementById('in-hpi').value.trim()}` : '',
+    document.getElementById('in-ros').value.trim() ? `\nREVIEW OF SYSTEMS:\n${document.getElementById('in-ros').value.trim()}` : '',
+    document.getElementById('in-exam').value.trim() ? `\nPHYSICAL EXAM:\n${document.getElementById('in-exam').value.trim()}` : '',
+    document.getElementById('in-assess').value.trim() ? `\nASSESSMENT:\n${document.getElementById('in-assess').value.trim()}` : '',
+    document.getElementById('in-plan').value.trim() ? `\nPLAN:\n${document.getElementById('in-plan').value.trim()}` : '',
+  ].filter(Boolean).join('');
+  await pushToArray('notes', { type: 'Admission Note', author: currentUserProfile?.displayName || currentUser.email, content: parts, time: new Date().toISOString() });
+  closeM('modal-intake'); toast('Intake note saved'); setTab('notes');
+  ['in-cc','in-hpi','in-ros','in-exam','in-assess','in-plan'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function saveEditDemo() {
+  await updatePatient({
+    first: document.getElementById('ed-first').value, last: document.getElementById('ed-last').value,
+    dob: document.getElementById('ed-dob').value, gender: document.getElementById('ed-sex').value,
+    blood: document.getElementById('ed-blood').value, phone: document.getElementById('ed-phone').value,
+    email: document.getElementById('ed-email').value, address: document.getElementById('ed-addr').value,
+    insurance: document.getElementById('ed-ins').value, emergency: document.getElementById('ed-emerg').value,
+    provider: document.getElementById('ed-prov').value,
+  });
+  closeM('modal-edit-demo'); toast('Demographics updated');
+}
+
+// ═══════════════════════════════════════════
+// REGISTER PATIENT
+// ═══════════════════════════════════════════
+async function registerPatient() {
+  const first = document.getElementById('nr-first').value.trim();
+  const last = document.getElementById('nr-last').value.trim();
+  const dob = document.getElementById('nr-dob').value;
+  if (!first||!last) { toast('First and last name required','error'); return; }
+  if (!dob) { toast('Date of birth required','error'); return; }
+  const mrn = genMRN();
+  const data = {
+    mrn, first, last, dob, gender: document.getElementById('nr-sex').value,
+    blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value,
+    email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value,
+    address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value,
+    provider: document.getElementById('nr-prov').value,
+    registeredBy: currentUserProfile?.displayName || currentUser.email,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null,
+    procedures:[], vaccines:[], ekgs:[], notes:[]
+  };
+  const cc = document.getElementById('nr-cc').value.trim();
+  if (cc) data.notes = [{ type:'Admission Note', author: currentUserProfile?.displayName||currentUser.email, content:`CHIEF COMPLAINT:\n${cc}`, time: new Date().toISOString() }];
+  try {
+    const ref = await db.collection('patients').add(data);
+    ['nr-first','nr-last','nr-dob','nr-phone','nr-email','nr-ins','nr-addr','nr-emerg','nr-prov','nr-cc'].forEach(id=>document.getElementById(id).value='');
+    toast(`${first} ${last} registered — ${mrn}`);
+    setTimeout(() => loadPatient(ref.id), 800);
+  } catch(e) { toast('Error registering patient: '+e.message,'error'); }
+}
+
+// ═══════════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════════
+function openM(id) {
+  const dateFields = { 'modal-vitals':[], 'modal-procedure':['pr-date'], 'modal-vaccine':['vc-date'], 'modal-ekg':['ek-date','ek-time'] };
+  if (dateFields[id]) {
+    dateFields[id].forEach(fid => { const el=document.getElementById(fid); if(el&&!el.value) el.value = fid.includes('time') ? nowTime() : today(); });
+  }
+  document.getElementById(id).classList.remove('hidden');
+}
+function closeM(id) { document.getElementById(id).classList.add('hidden'); }
+
+function openEditDemo() {
+  if (!currentPatient) return;
+  const p = currentPatient;
+  const fields = { 'ed-first':p.first,'ed-last':p.last,'ed-dob':p.dob,'ed-sex':p.gender||p.sex,'ed-blood':p.blood,'ed-phone':p.phone,'ed-email':p.email,'ed-addr':p.address,'ed-ins':p.insurance,'ed-emerg':p.emergency,'ed-prov':p.provider };
+  Object.entries(fields).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.value=val||''; });
+  openM('modal-edit-demo');
+}
+
+function openSocialModal() {
+  if (!currentPatient) return;
+  const s = currentPatient.social || {};
+  const fields = { 'soc-tob':s.tobacco||s.tob,'soc-alc':s.alcohol||s.alc,'soc-drug':s.drug||s.drugs,'soc-ex':s.exercise||s.ex,'soc-occ':s.occupation||s.occ,'soc-mar':s.marital||s.mar,'soc-diet':s.diet,'soc-notes':s.notes };
+  Object.entries(fields).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.value=val||''; });
+  openM('modal-social');
+}
+
+// Click outside to close
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.add('hidden'); }));
+document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.overlay:not(.hidden)').forEach(o=>o.classList.add('hidden')); });
+
+// Tab visibility init
+document.querySelectorAll('.tab-content').forEach(c => c.style.display = c.classList.contains('active') ? 'block' : 'none');
+// Enter key for login
+document.addEventListener('keydown', e => {
+  if(e.key==='Enter' && document.getElementById('auth-screen').style.display==='flex') {
+    const loginActive = document.getElementById('form-login').classList.contains('active');
+    if(loginActive) doLogin(); else doRegister();
+  }
+});
+</script>
+</body>
+</html>
