@@ -450,7 +450,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <div class="dash-card">
         <div class="dash-card-head"><h3>All Patients</h3><button class="btn primary sm" onclick="showPage('register')">+ Register Patient</button></div>
         <table class="pt-table">
-          <thead><tr><th>Patient</th><th>MRN</th><th>DOB / Age</th><th>Allergies</th><th>Active Meds</th><th>Registered By</th></tr></thead>
+          <thead><tr><th>Patient</th><th>MRN</th><th>DOB / Age</th><th>Allergies</th><th>Active Meds</th><th>Registered By</th><th></th></tr></thead>
           <tbody id="pt-tbody"></tbody>
         </table>
       </div>
@@ -477,6 +477,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
             <button class="btn sm" onclick="openM('modal-vitals')">+ Vitals</button>
             <button class="btn sm" onclick="openM('modal-note')">+ Note</button>
             <button class="btn primary sm" onclick="openM('modal-intake')">Full Intake</button>
+            <button class="btn danger sm" onclick="deletePatient()" style="border:1px solid rgba(248,81,73,0.3)">🗑 Delete Patient</button>
           </div>
         </div>
         <div class="allergy-bar" id="allergy-bar">⚠️ <span id="allergy-bar-text"></span></div>
@@ -960,16 +961,17 @@ function refreshDashboard() {
     return;
   }
   tbody.innerHTML = allPatients.map(p => `
-    <tr onclick="loadPatient('${p.id}')">
-      <td><div style="display:flex;align-items:center;gap:10px">
+    <tr>
+      <td onclick="loadPatient('${p.id}')" style="cursor:pointer"><div style="display:flex;align-items:center;gap:10px">
         <div class="search-avatar" style="background:${avatarColor((p.first||'')+(p.last||''))};width:28px;height:28px;font-size:11px">${initials(p)}</div>
         <span style="font-weight:500">${p.last}, ${p.first}</span>
       </div></td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${p.mrn}</td>
-      <td style="font-size:12px">${fmtDate(p.dob)} <span style="color:var(--text3)">(${calcAge(p.dob)}y)</span></td>
+      <td onclick="loadPatient('${p.id}')" style="cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text2)">${p.mrn}</td>
+      <td onclick="loadPatient('${p.id}')" style="cursor:pointer;font-size:12px">${fmtDate(p.dob)} <span style="color:var(--text3)">(${calcAge(p.dob)}y)</span></td>
       <td>${(p.allergies||[]).length ? `<span class="badge red">⚠ ${p.allergies.length} allerg${p.allergies.length>1?'ies':'y'}</span>` : '<span class="badge green">NKDA</span>'}</td>
       <td style="font-family:var(--mono);font-size:12px">${(p.medications||[]).filter(m=>m.status==='Active').length}</td>
-      <td style="font-size:11px;color:var(--text3)">${p.registeredBy||'—'}</td>
+      <td onclick="loadPatient('${p.id}')" style="cursor:pointer;font-size:11px;color:var(--text3)">${p.registeredBy||'—'}</td>
+      <td><button class="btn danger sm" onclick="event.stopPropagation();deletePatientById('${p.id}','${p.first} ${p.last}')">🗑 Delete</button></td>
     </tr>`).join('');
 }
 
@@ -1537,6 +1539,39 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') document.queryS
 
 // Tab visibility init
 document.querySelectorAll('.tab-content').forEach(c => c.style.display = c.classList.contains('active') ? 'block' : 'none');
+
+// ═══════════════════════════════════════════
+// DELETE PATIENT
+// ═══════════════════════════════════════════
+async function deletePatient() {
+  if (!currentPatient) return;
+  const name = currentPatient.first + ' ' + currentPatient.last;
+  const confirmed = prompt(`This will permanently delete ${name}'s entire chart including all notes, vitals, medications, and history.\n\nType DELETE to confirm:`);
+  if (confirmed !== 'DELETE') { toast('Deletion cancelled', 'info'); return; }
+  try {
+    await db.collection('patients').doc(currentPatient.id).delete();
+    currentPatient = null;
+    document.getElementById('pt-chart').style.display = 'none';
+    document.getElementById('no-pt').style.display = 'flex';
+    showPage('dashboard');
+    toast(`${name} has been permanently deleted`);
+  } catch(e) { toast('Error deleting patient: ' + e.message, 'error'); }
+}
+
+async function deletePatientById(id, name) {
+  const confirmed = prompt(`This will permanently delete ${name}'s entire chart including all notes, vitals, medications, and history.\n\nType DELETE to confirm:`);
+  if (confirmed !== 'DELETE') { toast('Deletion cancelled', 'info'); return; }
+  try {
+    await db.collection('patients').doc(id).delete();
+    if (currentPatient && currentPatient.id === id) {
+      currentPatient = null;
+      document.getElementById('pt-chart').style.display = 'none';
+      document.getElementById('no-pt').style.display = 'flex';
+    }
+    toast(`${name} has been permanently deleted`);
+  } catch(e) { toast('Error deleting patient: ' + e.message, 'error'); }
+}
+
 // Enter key for login
 document.addEventListener('keydown', e => {
   if(e.key==='Enter' && document.getElementById('auth-screen').style.display==='flex') {
