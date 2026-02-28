@@ -356,7 +356,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <!-- REGISTER -->
       <div class="auth-form" id="form-register">
         <div class="auth-class-info">
-          🔑 You'll need the <strong>class registration code</strong> from your instructor to create an account.
+          🔑 You'll need the <strong>campus registration code</strong> from your instructor. Each campus has its own unique code and patient database.
         </div>
         <div class="auth-error" id="reg-error"></div>
         <div class="field field-row">
@@ -374,9 +374,9 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           </div>
         </div>
         <div class="field">
-          <label>Class Registration Code</label>
-          <input type="text" id="rg-code" placeholder="Enter code from your instructor" />
-          <div class="class-code-note">Contact your instructor for the class code.</div>
+          <label>Campus Registration Code</label>
+          <input type="text" id="rg-code" placeholder="Enter your campus code" />
+          <div class="class-code-note">Each campus has a unique code. Contact your instructor.</div>
         </div>
         <button class="btn-auth" id="btn-register" onclick="doRegister()">Create Account →</button>
       </div>
@@ -427,6 +427,11 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <div class="nav-item" onclick="requirePatient('modal-note')"><span class="nav-icon">📝</span>Write Note</div>
         <div class="nav-item" onclick="requirePatient('modal-ekg')"><span class="nav-icon">📈</span>Record EKG</div>
         <div class="nav-item" onclick="requirePatient('modal-allergy')"><span class="nav-icon">⚠️</span>Add Allergy</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section" id="admin-sidebar-section" style="display:none">
+        <div class="sidebar-label">Administration</div>
+        <div class="nav-item" id="nav-admin" onclick="showPage('admin')"><span class="nav-icon">🏫</span>Campus Admin</div>
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
@@ -536,6 +541,48 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         </div>
       </div>
     </div>
+  <!-- ADMIN PAGE -->
+    <div id="page-admin" class="page" style="overflow-y:auto;">
+      <div style="padding:28px;max-width:900px;">
+        <div style="margin-bottom:24px;">
+          <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.3px;">🏫 Campus Administration</h1>
+          <p style="color:var(--text2);font-size:13px;margin-top:4px;">Manage campuses, registration codes, and view all users.</p>
+        </div>
+
+        <div class="sc" style="margin-bottom:20px;">
+          <div class="sc-head"><h3>➕ Add New Campus</h3></div>
+          <div class="sc-body">
+            <div class="fr c3">
+              <div class="mf"><label>Campus Name *</label><input type="text" id="adm-campus-name" placeholder="e.g. North Campus" /></div>
+              <div class="mf"><label>Registration Code *</label><input type="text" id="adm-campus-code" placeholder="e.g. NORTH-2024" style="text-transform:uppercase" /></div>
+              <div class="mf"><label>Location / Notes</label><input type="text" id="adm-campus-location" placeholder="e.g. 123 Main St" /></div>
+            </div>
+            <button class="btn primary" onclick="addCampus()">+ Add Campus</button>
+          </div>
+        </div>
+
+        <div class="sc">
+          <div class="sc-head"><h3>🏫 All Campuses</h3><button class="btn sm" onclick="loadAdminData()">↻ Refresh</button></div>
+          <div class="sc-body">
+            <table class="dt" id="campus-table">
+              <thead><tr><th>Campus Name</th><th>Registration Code</th><th>Location</th><th>Students</th><th>Patients</th><th>Status</th><th></th></tr></thead>
+              <tbody id="campus-tbody"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Loading campuses...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="sc" style="margin-top:20px;">
+          <div class="sc-head"><h3>👥 All Users</h3></div>
+          <div class="sc-body">
+            <table class="dt">
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Campus</th><th>Joined</th></tr></thead>
+              <tbody id="users-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Loading users...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -762,8 +809,11 @@ const firebaseConfig = {
   measurementId: "G-SY2695FPHR"
 };
 
-// CLASS REGISTRATION CODE — change this to share with your students
-const CLASS_CODE = "MEDLEARN2024";
+// ═══════════════════════════════════════════
+// CAMPUS / CLASS CODE SYSTEM
+// Master admin password — CHANGE THIS
+// ═══════════════════════════════════════════
+const MASTER_ADMIN_CODE = "ADMIN-MASTER-2024";
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
@@ -854,16 +904,43 @@ async function doRegister() {
   if (!first || !last) { showAuthError('reg', 'Please enter your first and last name.'); return; }
   if (!email) { showAuthError('reg', 'Please enter your email address.'); return; }
   if (pass.length < 6) { showAuthError('reg', 'Password must be at least 6 characters.'); return; }
-  if (code !== CLASS_CODE) { showAuthError('reg', 'Invalid class registration code. Please check with your instructor.'); return; }
-  btn.disabled = true; btn.textContent = 'Creating account...';
+  if (!code) { showAuthError('reg', 'Please enter your campus registration code.'); return; }
+
+  // Check if code is master admin code
+  if (code === MASTER_ADMIN_CODE) {
+    btn.disabled = true; btn.textContent = 'Creating account...';
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      await cred.user.updateProfile({ displayName: first + ' ' + last });
+      await db.collection('users').doc(cred.user.uid).set({
+        displayName: first + ' ' + last, firstName: first, lastName: last,
+        email, role: 'admin', campusId: 'admin', campusName: 'All Campuses',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      toast(`Welcome, ${first}! Admin account created.`);
+    } catch(e) { showAuthError('reg', friendlyAuthError(e.code)); btn.disabled=false; btn.textContent='Create Account →'; }
+    return;
+  }
+
+  // Look up campus by code
+  btn.disabled = true; btn.textContent = 'Verifying code...';
   try {
+    const campusSnap = await db.collection('campuses').where('code','==',code).where('active','==',true).get();
+    if (campusSnap.empty) {
+      showAuthError('reg', 'Invalid campus code. Please check with your instructor.');
+      btn.disabled = false; btn.textContent = 'Create Account →'; return;
+    }
+    const campus = campusSnap.docs[0];
+    const campusData = campus.data();
+    btn.textContent = 'Creating account...';
     const cred = await auth.createUserWithEmailAndPassword(email, pass);
     await cred.user.updateProfile({ displayName: first + ' ' + last });
     await db.collection('users').doc(cred.user.uid).set({
       displayName: first + ' ' + last, firstName: first, lastName: last,
-      email, role, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      email, role, campusId: campus.id, campusName: campusData.name,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast(`Welcome, ${first}! Account created successfully.`);
+    toast(`Welcome, ${first}! Registered to ${campusData.name}.`);
   } catch(e) {
     showAuthError('reg', friendlyAuthError(e.code));
     btn.disabled = false; btn.textContent = 'Create Account →';
@@ -901,6 +978,26 @@ function showApp() {
   // Set default author for notes
   document.getElementById('nt-author').value = name;
   document.getElementById('ek-prov').value = name;
+
+  // Show admin panel if admin
+  if (currentUserProfile?.role === 'admin') {
+    document.getElementById('admin-sidebar-section').style.display = 'block';
+  }
+
+  // Show campus badge in topbar
+  const campusName = currentUserProfile?.campusName;
+  if (campusName && campusName !== 'All Campuses') {
+    const badge = document.createElement('div');
+    badge.style.cssText = 'background:var(--accent-soft);color:var(--accent-hover);border:1px solid rgba(47,129,247,0.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;';
+    badge.textContent = '🏫 ' + campusName;
+    document.querySelector('.topbar-actions').prepend(badge);
+  } else if (currentUserProfile?.role === 'admin') {
+    const badge = document.createElement('div');
+    badge.style.cssText = 'background:rgba(163,113,247,0.12);color:var(--purple);border:1px solid rgba(163,113,247,0.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;';
+    badge.textContent = '⚡ System Admin';
+    document.querySelector('.topbar-actions').prepend(badge);
+  }
+
   subscribePatients();
 }
 
@@ -908,18 +1005,27 @@ function showApp() {
 // REAL-TIME PATIENT SUBSCRIPTION
 // ═══════════════════════════════════════════
 function subscribePatients() {
-  unsubPatients = db.collection('patients').orderBy('createdAt','desc').onSnapshot(snap => {
+  const role = currentUserProfile?.role;
+  const campusId = currentUserProfile?.campusId;
+  let query;
+  if (role === 'admin') {
+    // Admins see all patients across all campuses
+    query = db.collection('patients').orderBy('createdAt','desc');
+  } else {
+    // Students/instructors only see their campus patients
+    query = db.collection('patients').where('campusId','==', campusId).orderBy('createdAt','desc');
+  }
+  unsubPatients = query.onSnapshot(snap => {
     allPatients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     refreshDashboard();
     refreshSidebarRecents();
-    // If a patient is open, refresh their data too
     if (currentPatient) {
       const updated = allPatients.find(p => p.id === currentPatient.id);
       if (updated) { currentPatient = updated; renderAllTabs(); renderPatientHeader(); }
     }
   }, err => {
     console.error(err);
-    toast('Database connection error. Check your Firebase rules.', 'error');
+    toast('Database connection error: ' + err.message, 'error');
   });
 }
 
@@ -933,6 +1039,7 @@ function showPage(p) {
   if (pg) pg.classList.add('active');
   const nav = document.getElementById('nav-' + p);
   if (nav) nav.classList.add('active');
+  if (p === 'admin') loadAdminData();
 }
 function requirePatient(modalId) {
   if (!currentPatient) { toast('Please select a patient first', 'error'); return; }
@@ -1491,6 +1598,8 @@ async function registerPatient() {
     address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value,
     provider: document.getElementById('nr-prov').value,
     registeredBy: currentUserProfile?.displayName || currentUser.email,
+    campusId: currentUserProfile?.campusId || 'unknown',
+    campusName: currentUserProfile?.campusName || 'Unknown Campus',
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null,
     procedures:[], vaccines:[], ekgs:[], notes:[]
@@ -1570,6 +1679,107 @@ async function deletePatientById(id, name) {
     }
     toast(`${name} has been permanently deleted`);
   } catch(e) { toast('Error deleting patient: ' + e.message, 'error'); }
+}
+
+
+// ═══════════════════════════════════════════
+// ADMIN — CAMPUS MANAGEMENT
+// ═══════════════════════════════════════════
+async function loadAdminData() {
+  if (currentUserProfile?.role !== 'admin') return;
+
+  // Load campuses
+  const campusSnap = await db.collection('campuses').orderBy('createdAt','desc').get();
+  const campuses = campusSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Load all users
+  const userSnap = await db.collection('users').orderBy('createdAt','desc').get();
+  const users = userSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Load patient counts per campus
+  const ptSnap = await db.collection('patients').get();
+  const ptCounts = {};
+  ptSnap.docs.forEach(d => {
+    const cid = d.data().campusId || 'unknown';
+    ptCounts[cid] = (ptCounts[cid] || 0) + 1;
+  });
+
+  // Count students per campus
+  const studentCounts = {};
+  users.forEach(u => {
+    if (u.campusId && u.campusId !== 'admin') {
+      studentCounts[u.campusId] = (studentCounts[u.campusId] || 0) + 1;
+    }
+  });
+
+  // Render campus table
+  const campusTbody = document.getElementById('campus-tbody');
+  if (!campuses.length) {
+    campusTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No campuses added yet. Add your first campus above.</td></tr>';
+  } else {
+    campusTbody.innerHTML = campuses.map(c => `
+      <tr>
+        <td><strong>${c.name}</strong></td>
+        <td><code style="background:var(--surface2);padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:12px;color:var(--accent-hover)">${c.code}</code></td>
+        <td style="color:var(--text2);font-size:12px">${c.location||'—'}</td>
+        <td style="font-family:var(--mono)">${studentCounts[c.id]||0}</td>
+        <td style="font-family:var(--mono)">${ptCounts[c.id]||0}</td>
+        <td><span class="badge ${c.active?'green':'red'}">${c.active?'Active':'Inactive'}</span></td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn sm" onclick="toggleCampus('${c.id}',${c.active})">${c.active?'Deactivate':'Activate'}</button>
+          <button class="btn danger sm" onclick="deleteCampus('${c.id}','${c.name}')">× Delete</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  // Render users table
+  const usersTbody = document.getElementById('users-tbody');
+  usersTbody.innerHTML = users.map(u => `
+    <tr>
+      <td><strong>${u.displayName||'—'}</strong></td>
+      <td style="font-size:12px;color:var(--text2)">${u.email||'—'}</td>
+      <td><span class="badge ${u.role==='admin'?'purple':u.role==='instructor'?'blue':'green'}">${u.role||'student'}</span></td>
+      <td style="font-size:12px">${u.campusName||'—'}</td>
+      <td style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.createdAt?.toDate ? u.createdAt.toDate().toLocaleDateString() : '—'}</td>
+    </tr>`).join('');
+}
+
+async function addCampus() {
+  const name = document.getElementById('adm-campus-name').value.trim();
+  const code = document.getElementById('adm-campus-code').value.trim().toUpperCase();
+  const location = document.getElementById('adm-campus-location').value.trim();
+  if (!name || !code) { toast('Campus name and code are required', 'error'); return; }
+
+  // Check for duplicate code
+  const existing = await db.collection('campuses').where('code','==',code).get();
+  if (!existing.empty) { toast('That code is already in use. Choose a different code.', 'error'); return; }
+
+  try {
+    await db.collection('campuses').add({
+      name, code, location, active: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentUserProfile?.displayName || currentUser.email
+    });
+    document.getElementById('adm-campus-name').value = '';
+    document.getElementById('adm-campus-code').value = '';
+    document.getElementById('adm-campus-location').value = '';
+    toast(`Campus "${name}" added with code: ${code}`);
+    loadAdminData();
+  } catch(e) { toast('Error adding campus: ' + e.message, 'error'); }
+}
+
+async function toggleCampus(id, currentlyActive) {
+  await db.collection('campuses').doc(id).update({ active: !currentlyActive });
+  toast(currentlyActive ? 'Campus deactivated — new registrations blocked' : 'Campus activated');
+  loadAdminData();
+}
+
+async function deleteCampus(id, name) {
+  const confirmed = prompt(`Delete campus "${name}"? This does NOT delete patient records, but students will lose access.\n\nType DELETE to confirm:`);
+  if (confirmed !== 'DELETE') return;
+  await db.collection('campuses').doc(id).delete();
+  toast(`Campus "${name}" deleted`);
+  loadAdminData();
 }
 
 // Enter key for login
