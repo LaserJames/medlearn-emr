@@ -908,7 +908,7 @@ function showApp() {
 // REAL-TIME PATIENT SUBSCRIPTION
 // ═══════════════════════════════════════════
 function subscribePatients() {
-  unsubPatients = db.collection('patients').orderBy('createdAt','desc').onSnapshot(snap => {
+  unsubPatients = db.collection('patients').onSnapshot(snap => {
     allPatients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     refreshDashboard();
     refreshSidebarRecents();
