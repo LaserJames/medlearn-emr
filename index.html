@@ -454,6 +454,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       </div>
       <div class="dash-card">
         <div class="dash-card-head"><h3>All Patients</h3><button class="btn primary sm" onclick="showPage('register')">+ Register Patient</button></div>
+        <div style="overflow-y:auto; max-height:calc(100vh - 340px);">
         <table class="pt-table">
           <thead><tr><th>Patient</th><th>MRN</th><th>DOB / Age</th><th>Allergies</th><th>Active Meds</th><th>Registered By</th><th></th></tr></thead>
           <tbody id="pt-tbody"></tbody>
@@ -563,7 +564,8 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 
         <div class="sc">
           <div class="sc-head"><h3>🏫 All Campuses</h3><button class="btn sm" onclick="loadAdminData()">↻ Refresh</button></div>
-          <div class="sc-body">
+          <div class="sc-body" style="padding:0;">
+            <div style="overflow-y:auto; max-height:400px;">
             <table class="dt" id="campus-table">
               <thead><tr><th>Campus Name</th><th>Registration Code</th><th>Location</th><th>Students</th><th>Patients</th><th>Status</th><th></th></tr></thead>
               <tbody id="campus-tbody"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Loading campuses...</td></tr></tbody>
