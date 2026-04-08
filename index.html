@@ -668,7 +668,20 @@ const firebaseConfig = {
   appId: "1:782880917141:web:a8e97c055a890517e17d9c",
   measurementId: "G-SY2695FPHR"
 };
-const CLASS_CODE = "MEDLEARN2024";
+const ADMIN_CODE = "ADMIN-MASTER-2024";
+
+async function validateCampusCode(code) {
+  if (code === ADMIN_CODE) {
+    return { campusId: 'admin', campusName: 'System Admin', role: 'admin' };
+  }
+  const snap = await db.collection('campuses')
+    .where('code', '==', code)
+    .where('status', '==', 'active')
+    .limit(1).get();
+  if (snap.empty) return null;
+  const data = snap.docs[0].data();
+  return { campusId: snap.docs[0].id, campusName: data.name, role: null };
+}
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -772,12 +785,17 @@ async function doRegister() {
   if (!first || !last) { showAuthError('reg', 'Please enter your first and last name.'); return; }
   if (!email) { showAuthError('reg', 'Please enter your email address.'); return; }
   if (pass.length < 6) { showAuthError('reg', 'Password must be at least 6 characters.'); return; }
-  if (code !== CLASS_CODE) { showAuthError('reg', 'Invalid class registration code. Please check with your instructor.'); return; }
-  btn.disabled = true; btn.textContent = 'Creating account...';
+  btn.disabled = true; btn.textContent = 'Validating code...';
+let campusMatch;
+try { campusMatch = await validateCampusCode(code); }
+catch(e) { showAuthError('reg', 'Error validating code. Please try again.'); btn.disabled = false; btn.textContent = 'Create Account →'; return; }
+if (!campusMatch) { showAuthError('reg', 'Invalid class registration code. Please check with your instructor.'); btn.disabled = false; btn.textContent = 'Create Account →'; return; }
+btn.textContent = 'Creating account...';
   try {
     const cred = await auth.createUserWithEmailAndPassword(email, pass);
     await cred.user.updateProfile({ displayName: first + ' ' + last });
-    await db.collection('users').doc(cred.user.uid).set({ displayName: first + ' ' + last, firstName: first, lastName: last, email, role, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    const userRole = campusMatch.role || role;
+await db.collection('users').doc(cred.user.uid).set({ displayName: first + ' ' + last, firstName: first, lastName: last, email, role: userRole, campusId: campusMatch.campusId, campusName: campusMatch.campusName, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     toast(`Welcome, ${first}! Account created successfully.`);
   } catch(e) { showAuthError('reg', friendlyAuthError(e.code)); btn.disabled = false; btn.textContent = 'Create Account →'; }
 }
@@ -1669,7 +1687,8 @@ async function registerPatient() {
   if (!first||!last) { toast('First and last name required','error'); return; }
   if (!dob) { toast('Date of birth required','error'); return; }
   const mrn = genMRN();
-  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: currentUserProfile?.displayName || currentUser.email, createdAt: firebase.firestore.FieldValue.serverTimestamp(), vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], notes:[] };
+  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: campusId: currentUserProfile?.campusId || 'unknown',
+campusName: currentUserProfile?.campusName || 'Unknown Campus', currentUserProfile?.displayName || currentUser.email, createdAt: firebase.firestore.FieldValue.serverTimestamp(), vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], notes:[] };
   const cc = document.getElementById('nr-cc').value.trim();
   if (cc) data.notes = [{ type:'Admission Note', author: currentUserProfile?.displayName||currentUser.email, content:`CHIEF COMPLAINT:\n${cc}`, time: new Date().toISOString() }];
   try {
