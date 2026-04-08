@@ -454,7 +454,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 </div>
 
 <!-- ══════════════════ CAMPUS MANAGER PAGE ══════════════════ -->
-<div id="page-campuses" class="page" style="overflow-y:auto;padding:28px;display:none;">
+<div id="page-campuses" class="page" style="overflow-y:auto;padding:28px;">
   <h1>🏫 Campus &amp; School Management</h1>
   <p class="page-sub">Add and manage schools and their registration codes. Changes take effect immediately — no redeploy needed.</p>
   <button class="btn primary" onclick="openAddCampus()">+ Add New School / Campus</button>
@@ -908,14 +908,13 @@ function subscribePatients() {
 function showPage(p) {
   document.querySelectorAll('.page').forEach(pg => {
     pg.classList.remove('active');
-    pg.style.display = 'none';
+    pg.style.removeProperty('display');
   });
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el => el.classList.remove('active'));
   const pg = document.getElementById('page-' + p);
   if (pg) {
     pg.classList.add('active');
-    // campus page uses block/scroll layout, others use flex
-    pg.style.display = p === 'campuses' ? 'block' : 'flex';
+    if (p === 'campuses') pg.style.display = 'block';
   }
   const nav = document.getElementById('nav-' + p);
   if (nav) nav.classList.add('active');
