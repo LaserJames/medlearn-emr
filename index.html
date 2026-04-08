@@ -347,7 +347,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
     </div>
 
     <!-- DASHBOARD -->
-    <div id="page-dashboard" class="page active">
+    <div id="page-dashboard" class="page active" style="display:block;">
       <div class="dash-head">
         <h1>Clinical Dashboard</h1>
         <p id="dash-greeting">Welcome. Loading your session...</p>
@@ -370,7 +370,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
     </div>
 
     <!-- CHART -->
-    <div id="page-chart" class="page">
+    <div id="page-chart" class="page" style="display:none;">
       <div class="no-pt" id="no-pt">
         <div class="no-pt-icon">🏥</div>
         <h2>No Patient Selected</h2>
@@ -421,7 +421,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
     </div>
 
     <!-- REGISTER -->
-    <div id="page-register" class="page">
+    <div id="page-register" class="page" style="display:none;">
       <div class="inner">
         <h1>Register New Patient</h1>
         <p>Complete patient demographics to create a new chart in the shared database.</p>
@@ -454,7 +454,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 </div>
 
 <!-- ══════════════════ CAMPUS MANAGER PAGE ══════════════════ -->
-<div id="page-campuses" class="page" style="overflow-y:auto;padding:28px;">
+<div id="page-campuses" class="page" style="overflow-y:auto;padding:28px;display:none;">
   <h1>🏫 Campus &amp; School Management</h1>
   <p class="page-sub">Add and manage schools and their registration codes. Changes take effect immediately — no redeploy needed.</p>
   <button class="btn primary" onclick="openAddCampus()">+ Add New School / Campus</button>
@@ -906,15 +906,17 @@ function subscribePatients() {
 }
 
 function showPage(p) {
-  document.querySelectorAll('.page').forEach(pg => {
-    pg.classList.remove('active');
-    pg.style.removeProperty('display');
+  // Hide all pages using inline style (beats CSS specificity)
+  ['dashboard','chart','register','campuses'].forEach(name => {
+    const el = document.getElementById('page-' + name);
+    if (el) el.style.display = 'none';
   });
+  // Remove active from all nav items
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el => el.classList.remove('active'));
+  // Show the target page
   const pg = document.getElementById('page-' + p);
   if (pg) {
-    pg.classList.add('active');
-    if (p === 'campuses') pg.style.display = 'block';
+    pg.style.display = (p === 'campuses' || p === 'dashboard' || p === 'register') ? 'block' : 'flex';
   }
   const nav = document.getElementById('nav-' + p);
   if (nav) nav.classList.add('active');
