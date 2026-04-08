@@ -235,6 +235,19 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 
 .online-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* ── Campus Manager ── */
+#page-campuses { overflow-y: auto; flex: 1; padding: 28px; }
+#page-campuses h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+#page-campuses .page-sub { color: var(--text2); font-size: 13px; margin-bottom: 22px; }
+.campus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 20px; }
+.campus-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; }
+.campus-card.inactive { opacity: 0.55; }
+.campus-card-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.campus-card-code { font-family: var(--mono); font-size: 12px; color: var(--accent-hover); background: var(--accent-soft); padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px; }
+.campus-card-meta { font-size: 11px; color: var(--text3); }
+.campus-card-actions { display: flex; gap: 6px; margin-top: 12px; }
+.mf .hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -315,6 +328,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <div class="sidebar-section">
         <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
         <div class="nav-item" id="nav-chart" onclick="showPage('chart')"><span class="nav-icon">📋</span>Active Chart</div>
+        <div class="nav-item" id="nav-campuses" onclick="showPage('campuses')" style="display:none"><span class="nav-icon">🏫</span>Manage Campuses</div>
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
@@ -439,7 +453,45 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
   </div>
 </div>
 
+<!-- ══════════════════ CAMPUS MANAGER PAGE ══════════════════ -->
+<div id="page-campuses" class="page" style="display:none;flex-direction:column;">
+  <div style="padding:28px;overflow-y:auto;flex:1;">
+    <h1>🏫 Campus &amp; School Management</h1>
+    <p class="page-sub">Add and manage schools and their registration codes. Changes take effect immediately — no redeploy needed.</p>
+    <button class="btn primary" onclick="openAddCampus()">+ Add New School / Campus</button>
+    <div class="campus-grid" id="campus-grid">
+      <div style="color:var(--text3);font-size:13px;margin-top:8px">Loading campuses...</div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════ MODALS ══════════════════ -->
+
+<!-- CAMPUS ADD/EDIT -->
+<div class="overlay hidden" id="modal-campus">
+  <div class="modal">
+    <div class="modal-head"><h2>🏫 Add / Edit School</h2><button class="modal-x" onclick="closeM('modal-campus')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="campus-edit-id" value="" />
+      <div class="mf"><label>School / Campus Name *</label><input type="text" id="campus-name" placeholder="e.g. Houston North Campus" /></div>
+      <div class="mf">
+        <label>Registration Code *</label>
+        <input type="text" id="campus-code" placeholder="e.g. HOUSTON77001" style="font-family:var(--mono);text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+        <div class="hint">Share this code with students at this campus. Must be unique.</div>
+      </div>
+      <div class="mf"><label>City / Location</label><input type="text" id="campus-city" placeholder="e.g. Houston, TX" /></div>
+      <div class="mf"><label>Notes (optional)</label><textarea id="campus-notes" placeholder="Contact person, contract details..."></textarea></div>
+      <div class="mf"><label>Status</label>
+        <select id="campus-status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        <div class="hint">Inactive campuses cannot register new users.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeM('modal-campus')">Cancel</button>
+      <button class="btn primary" onclick="saveCampus()">Save Campus</button>
+    </div>
+  </div>
+</div>
 
 <!-- VITALS -->
 <div class="overlay hidden" id="modal-vitals">
@@ -668,6 +720,10 @@ const firebaseConfig = {
   appId: "1:782880917141:web:a8e97c055a890517e17d9c",
   measurementId: "G-SY2695FPHR"
 };
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
 const ADMIN_CODE = "ADMIN-MASTER-2024";
 
 async function validateCampusCode(code) {
@@ -682,9 +738,6 @@ async function validateCampusCode(code) {
   const data = snap.docs[0].data();
   return { campusId: snap.docs[0].id, campusName: data.name, role: null };
 }
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
 
 let currentUser = null;
 let currentUserProfile = null;
@@ -819,15 +872,27 @@ function showApp() {
   document.getElementById('user-ava').textContent = ava;
   document.getElementById('user-ava').style.background = avatarColor(name);
   document.getElementById('user-name-display').textContent = name;
-  document.getElementById('user-role-display').textContent = role === 'instructor' ? 'Instructor' : 'Student Clinician';
+  document.getElementById('user-role-display').textContent = role === 'admin' ? 'System Admin' : role === 'instructor' ? 'Instructor' : 'Student Clinician';
   document.getElementById('dash-greeting').textContent = `Welcome back, ${name.split(' ')[0]}. ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.`;
   document.getElementById('nt-author').value = name;
   document.getElementById('ek-prov').value = name;
+  if (role === 'admin') {
+    document.getElementById('nav-campuses').style.display = 'flex';
+    seedCampusesIfNeeded();
+  }
   subscribePatients();
 }
 
 function subscribePatients() {
-  unsubPatients = db.collection('patients').onSnapshot(snap => {
+  const role = currentUserProfile?.role;
+  const campusId = currentUserProfile?.campusId;
+  let query = db.collection('patients');
+  if (role !== 'admin' && campusId) {
+    query = query.where('campusId', '==', campusId).orderBy('createdAt', 'desc');
+  } else {
+    query = query.orderBy('createdAt', 'desc');
+  }
+  unsubPatients = query.onSnapshot(snap => {
     allPatients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     refreshDashboard();
     refreshSidebarRecents();
@@ -848,6 +913,7 @@ function showPage(p) {
   const pg = document.getElementById('page-' + p);
   if (pg) pg.classList.add('active');
   const nav = document.getElementById('nav-' + p);
+  if (p === 'campuses') loadCampuses();
   if (nav) nav.classList.add('active');
 }
 function requirePatient(modalId) {
@@ -1687,8 +1753,7 @@ async function registerPatient() {
   if (!first||!last) { toast('First and last name required','error'); return; }
   if (!dob) { toast('Date of birth required','error'); return; }
   const mrn = genMRN();
-  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: campusId: currentUserProfile?.campusId || 'unknown',
-campusName: currentUserProfile?.campusName || 'Unknown Campus', currentUserProfile?.displayName || currentUser.email, createdAt: firebase.firestore.FieldValue.serverTimestamp(), vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], notes:[] };
+  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: currentUserProfile?.displayName || currentUser.email, campusId: currentUserProfile?.campusId || 'unknown', campusName: currentUserProfile?.campusName || 'Unknown Campus', createdAt: firebase.firestore.FieldValue.serverTimestamp(), vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], notes:[] };
   const cc = document.getElementById('nr-cc').value.trim();
   if (cc) data.notes = [{ type:'Admission Note', author: currentUserProfile?.displayName||currentUser.email, content:`CHIEF COMPLAINT:\n${cc}`, time: new Date().toISOString() }];
   try {
@@ -1771,6 +1836,124 @@ document.addEventListener('keydown', e => {
     if(loginActive) doLogin(); else doRegister();
   }
 });
+
+// ═══════════════════════════════════════════
+// CAMPUS MANAGER
+// ═══════════════════════════════════════════
+let allCampuses = [];
+
+async function seedCampusesIfNeeded() {
+  try {
+    const existing = await db.collection('campuses').limit(1).get();
+    if (!existing.empty) return;
+    const initial = [
+      { name: 'Waco Campus',              code: 'WACO76706',        city: 'Waco, TX',          status: 'active', notes: '' },
+      { name: 'Austin Campus',            code: 'AUSTIN78704',      city: 'Austin, TX',        status: 'active', notes: '' },
+      { name: 'Brownsville Campus',       code: 'BROWNSVILLE78520', city: 'Brownsville, TX',   status: 'active', notes: '' },
+      { name: 'Corpus Christi Campus',    code: 'CORPUS78414',      city: 'Corpus Christi, TX',status: 'active', notes: '' },
+      { name: 'Harlingen Campus',         code: 'HARLINGEN78550',   city: 'Harlingen, TX',     status: 'active', notes: '' },
+      { name: 'Pharr Campus',             code: 'PHARR78577',       city: 'Pharr, TX',         status: 'active', notes: '' },
+      { name: 'San Antonio North Campus', code: 'SANORTH78238',     city: 'San Antonio, TX',   status: 'active', notes: '' },
+      { name: 'San Antonio South Campus', code: 'SASOUTH78221',     city: 'San Antonio, TX',   status: 'active', notes: '' },
+    ];
+    const batch = db.batch();
+    initial.forEach(c => batch.set(db.collection('campuses').doc(), { ...c, createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    await batch.commit();
+    console.log('Campuses seeded successfully.');
+  } catch(e) { console.error('Seed error:', e); }
+}
+
+async function loadCampuses() {
+  document.getElementById('campus-grid').innerHTML = '<div style="color:var(--text3);font-size:13px">Loading...</div>';
+  try {
+    const snap = await db.collection('campuses').orderBy('name').get();
+    allCampuses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderCampusGrid();
+  } catch(e) { document.getElementById('campus-grid').innerHTML = '<div style="color:var(--red);font-size:13px">Error loading campuses: ' + e.message + '</div>'; }
+}
+
+function renderCampusGrid() {
+  const grid = document.getElementById('campus-grid');
+  if (!allCampuses.length) {
+    grid.innerHTML = '<div style="color:var(--text3);font-size:13px;margin-top:8px">No campuses yet. Add your first one above.</div>';
+    return;
+  }
+  grid.innerHTML = allCampuses.map(c => `
+    <div class="campus-card ${c.status === 'inactive' ? 'inactive' : ''}">
+      <div class="campus-card-name">${c.name}</div>
+      <div class="campus-card-code">${c.code}</div>
+      <div class="campus-card-meta">
+        📍 ${c.city || 'Location not set'} &nbsp;·&nbsp;
+        <span class="badge ${c.status === 'active' ? 'green' : 'red'}">${c.status}</span>
+        ${c.notes ? `<div style="margin-top:6px">${c.notes}</div>` : ''}
+      </div>
+      <div class="campus-card-actions">
+        <button class="btn warning sm" onclick="editCampus('${c.id}')">✏ Edit</button>
+        <button class="btn sm" onclick="toggleCampusStatus('${c.id}','${c.status}')">${c.status === 'active' ? 'Deactivate' : 'Activate'}</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAddCampus() {
+  document.getElementById('campus-edit-id').value = '';
+  ['campus-name','campus-code','campus-city','campus-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('campus-status').value = 'active';
+  openM('modal-campus');
+}
+
+function editCampus(id) {
+  const c = allCampuses.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('campus-edit-id').value = id;
+  document.getElementById('campus-name').value = c.name || '';
+  document.getElementById('campus-code').value = c.code || '';
+  document.getElementById('campus-city').value = c.city || '';
+  document.getElementById('campus-notes').value = c.notes || '';
+  document.getElementById('campus-status').value = c.status || 'active';
+  openM('modal-campus');
+}
+
+async function saveCampus() {
+  const name = document.getElementById('campus-name').value.trim();
+  const code = document.getElementById('campus-code').value.trim().toUpperCase();
+  const city = document.getElementById('campus-city').value.trim();
+  const notes = document.getElementById('campus-notes').value.trim();
+  const status = document.getElementById('campus-status').value;
+  const editId = document.getElementById('campus-edit-id').value;
+  if (!name) { toast('Campus name is required', 'error'); return; }
+  if (!code) { toast('Registration code is required', 'error'); return; }
+  // Check for duplicate code
+  const dupCheck = await db.collection('campuses').where('code', '==', code).get();
+  const isDup = dupCheck.docs.some(d => d.id !== editId);
+  if (isDup) { toast('That registration code is already in use', 'error'); return; }
+  try {
+    if (editId) {
+      await db.collection('campuses').doc(editId).update({ name, code, city, notes, status });
+      toast('Campus updated');
+    } else {
+      await db.collection('campuses').add({ name, code, city, notes, status, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      toast(name + ' added — code: ' + code);
+    }
+    closeM('modal-campus');
+    loadCampuses();
+  } catch(e) { toast('Error saving campus: ' + e.message, 'error'); }
+}
+
+async function toggleCampusStatus(id, currentStatus) {
+  const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+  const campus = allCampuses.find(c => c.id === id);
+  const msg = newStatus === 'inactive'
+    ? 'Deactivate ' + (campus?.name || 'this campus') + '? Students will no longer be able to register with this code.'
+    : 'Reactivate ' + (campus?.name || 'this campus') + '?';
+  if (!confirm(msg)) return;
+  try {
+    await db.collection('campuses').doc(id).update({ status: newStatus });
+    toast('Campus ' + (newStatus === 'active' ? 'activated' : 'deactivated'));
+    loadCampuses();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
 </script>
 </body>
 </html>
