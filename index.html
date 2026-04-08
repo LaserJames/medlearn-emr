@@ -450,16 +450,17 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- ══════════════════ CAMPUS MANAGER PAGE ══════════════════ -->
-<div id="page-campuses" class="page" style="overflow-y:auto;padding:28px;display:none;">
-  <h1>🏫 Campus &amp; School Management</h1>
-  <p class="page-sub">Add and manage schools and their registration codes. Changes take effect immediately — no redeploy needed.</p>
-  <button class="btn primary" onclick="openAddCampus()">+ Add New School / Campus</button>
-  <div class="campus-grid" id="campus-grid">
-    <div style="color:var(--text3);font-size:13px;margin-top:8px">Loading campuses...</div>
+    <!-- CAMPUS MANAGER (Admin Only) -->
+    <div id="page-campuses" class="page" style="display:none;overflow-y:auto;padding:28px;">
+      <h1>🏫 Campus &amp; School Management</h1>
+      <p class="page-sub">Add and manage schools and their registration codes. Changes take effect immediately — no redeploy needed.</p>
+      <button class="btn primary" onclick="openAddCampus()">+ Add New School / Campus</button>
+      <div class="campus-grid" id="campus-grid">
+        <div style="color:var(--text3);font-size:13px;margin-top:8px">Loading campuses...</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
