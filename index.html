@@ -10,13 +10,13 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
 :root {
-  --bg: #080c10; --surface: #0d1219; --surface2: #111820; --surface3: #161e28; --surface4: #1c2530;
-  --border: #1e2d3d; --border2: #263545; --text: #cdd9e5; --text2: #768a9e; --text3: #4a6070;
-  --accent: #2f81f7; --accent-hover: #58a6ff; --accent-soft: rgba(47,129,247,0.12); --accent-glow: rgba(47,129,247,0.06);
-  --green: #3fb950; --green-soft: rgba(63,185,80,0.12); --red: #f85149; --red-soft: rgba(248,81,73,0.12);
-  --yellow: #d29922; --yellow-soft: rgba(210,153,34,0.12); --purple: #a371f7; --cyan: #39d0d8;
+  --bg: #ffffff; --surface: #f8f9fa; --surface2: #f1f3f5; --surface3: #e9ecef; --surface4: #dee2e6;
+  --border: #dee2e6; --border2: #ced4da; --text: #212529; --text2: #495057; --text3: #868e96;
+  --accent: #2f81f7; --accent-hover: #1a6fd4; --accent-soft: rgba(47,129,247,0.10); --accent-glow: rgba(47,129,247,0.05);
+  --green: #2f9e44; --green-soft: rgba(47,158,68,0.10); --red: #e03131; --red-soft: rgba(224,49,49,0.10);
+  --yellow: #e67700; --yellow-soft: rgba(230,119,0,0.10); --purple: #7048e8; --cyan: #0c8599;
   --radius: 5px; --radius-lg: 10px; --font: 'DM Sans', sans-serif; --mono: 'JetBrains Mono', monospace;
-  --shadow: 0 4px 24px rgba(0,0,0,0.5); --shadow-lg: 0 12px 48px rgba(0,0,0,0.7);
+  --shadow: 0 4px 24px rgba(0,0,0,0.08); --shadow-lg: 0 12px 48px rgba(0,0,0,0.14);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
@@ -189,12 +189,12 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .v-high { color: var(--red); }
 .v-low { color: var(--yellow); }
 
-.ekg-record { background: #060e08; border: 1px solid #0e2211; border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px; }
+.ekg-record { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px; }
 .ekg-canvas { width: 100%; height: 110px; display: block; }
 .ekg-data { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 11px; font-family: var(--mono); }
-.ekg-d label { color: #2a5a35; font-size: 9px; text-transform: uppercase; display: block; margin-bottom: 2px; }
-.ekg-d span { color: #52a86a; }
-.ekg-interp { margin-top: 10px; padding: 10px; background: #050d07; border-radius: 4px; font-size: 11px; color: #4a8a5a; font-family: var(--mono); line-height: 1.7; white-space: pre-wrap; border-left: 2px solid #1a5a2a; }
+.ekg-d label { color: var(--text3); font-size: 9px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+.ekg-d span { color: var(--text); }
+.ekg-interp { margin-top: 10px; padding: 10px; background: var(--surface3); border-radius: 4px; font-size: 11px; color: var(--text2); font-family: var(--mono); line-height: 1.7; white-space: pre-wrap; border-left: 2px solid var(--accent); }
 
 .note-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
 .note-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -503,6 +503,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <div class="fr c3"><div class="mf"><label>Temperature (°F)</label><input type="number" step="0.1" id="v-temp" placeholder="98.6" /></div><div class="mf"><label>Weight (lbs)</label><input type="number" step="0.1" id="v-wt" placeholder="155" /></div><div class="mf"><label>Height (in)</label><input type="number" step="0.5" id="v-ht" placeholder="68" /></div></div>
       <div class="mf"><label>Pain Score (0–10)</label><input type="number" min="0" max="10" id="v-pain" placeholder="0" /></div>
       <div class="mf"><label>Notes</label><textarea id="v-notes" placeholder="Notes about this vital recording..."></textarea></div>
+      <div class="mf"><label>Performed By</label><input type="text" id="v-performed-by" placeholder="Student name" /></div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeM('modal-vitals')">Cancel</button><button class="btn primary" onclick="saveVitals()">Save Vitals</button></div>
   </div>
@@ -616,6 +617,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <div class="mf"><label>Procedure Name *</label><input type="text" id="pr-name" placeholder="e.g. Chest X-Ray, CBC with Diff" /></div>
       <div class="fr c2"><div class="mf"><label>Provider / Ordered By</label><input type="text" id="pr-prov" placeholder="Dr. Smith" /></div><div class="mf"><label>Status</label><select id="pr-stat"><option>Ordered</option><option>Completed</option><option>Pending Results</option><option>Cancelled</option></select></div></div>
       <div class="mf"><label>Results / Findings</label><textarea id="pr-results" placeholder="Document results or pending status..."></textarea></div>
+      <div class="mf"><label>Performed By</label><input type="text" id="pr-performed-by" placeholder="Student name" /></div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeM('modal-procedure')">Cancel</button><button class="btn primary" onclick="saveProcedure()">Save Procedure</button></div>
   </div>
@@ -632,6 +634,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <div class="fr c2"><div class="mf"><label>Dose / Lot Number</label><input type="text" id="vc-dose" placeholder="e.g. 0.5 mL / Lot #ABC123" /></div><div class="mf"><label>Route</label><select id="vc-route"><option>IM (Intramuscular)</option><option>SubQ (Subcutaneous)</option><option>Intradermal</option><option>IV (Intravenous)</option><option>Nasal</option><option>Oral</option></select></div></div>
       <div class="fr c2"><div class="mf"><label>Site</label><select id="vc-site"><option>Left deltoid</option><option>Right deltoid</option><option>Left anterolateral thigh</option><option>Right anterolateral thigh</option><option>Left abdomen</option><option>Right abdomen</option><option>Other</option></select></div><div class="mf"><label>Administered By</label><input type="text" id="vc-admin" placeholder="Name / credential" /></div></div>
       <div class="mf"><label>Notes / Observations</label><textarea id="vc-notes" placeholder="Post-admin observations, next dose due..."></textarea></div>
+      <div class="mf"><label>Performed By</label><input type="text" id="vc-performed-by" placeholder="Student name" /></div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeM('modal-vaccine')">Cancel</button><button class="btn primary" onclick="saveVaccine()">Save Record</button></div>
   </div>
@@ -648,7 +651,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <div class="fr c3"><div class="mf"><label>QRS Duration (ms)</label><input type="number" id="ek-qrs" placeholder="80" /></div><div class="mf"><label>QT Interval (ms)</label><input type="number" id="ek-qt" placeholder="400" /></div><div class="mf"><label>QTc (ms)</label><input type="number" id="ek-qtc" placeholder="420" /></div></div>
       <div class="fr c2"><div class="mf"><label>Axis</label><select id="ek-axis"><option>Normal Axis</option><option>Left Axis Deviation (LAD)</option><option>Right Axis Deviation (RAD)</option><option>Extreme Axis</option></select></div><div class="mf"><label>ST Changes</label><select id="ek-st"><option>None</option><option>ST Elevation (STEMI pattern)</option><option>ST Depression</option><option>Nonspecific ST changes</option></select></div></div>
       <div class="mf"><label>Interpretation / Findings *</label><textarea id="ek-interp" placeholder="Full EKG interpretation, clinical correlation..." style="min-height:90px"></textarea></div>
-      <div class="mf"><label>Ordered / Interpreted By</label><input type="text" id="ek-prov" placeholder="Student name / provider" /></div>
+      <div class="fr c2"><div class="mf"><label>Ordered / Interpreted By (Doctor)</label><input type="text" id="ek-prov" placeholder="Dr. Smith" /></div><div class="mf"><label>Performed By</label><input type="text" id="ek-performed-by" placeholder="Student name" /></div></div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeM('modal-ekg')">Cancel</button><button class="btn primary" onclick="saveEKG()">Save EKG</button></div>
   </div>
@@ -933,7 +936,7 @@ function refreshDashboard() {
   let totalMeds = 0, totalAllergies = 0, todayNotes = 0;
   allPatients.forEach(p => {
     totalMeds += (p.medications||[]).filter(m=>m.status==='Active').length;
-    totalAllergies += (p.allergies||[]).length;
+    totalAllergies += (p.allergies||[]).filter(a=>!a.inactive).length;
     todayNotes += (p.notes||[]).filter(n => { try { return (n.time?.toDate ? n.time.toDate() : new Date(n.time)).toDateString() === today_str; } catch(e){return false;} }).length;
   });
   document.getElementById('s-pts').textContent = allPatients.length;
@@ -1051,7 +1054,7 @@ function updateTabCounts() {
   const p = currentPatient;
   document.getElementById('tc-v').textContent = (p.vitals||[]).length;
   document.getElementById('tc-m').textContent = (p.medications||[]).length;
-  document.getElementById('tc-a').textContent = (p.allergies||[]).length;
+  document.getElementById('tc-a').textContent = (p.allergies||[]).filter(a=>!a.inactive).length;
   document.getElementById('tc-h').textContent = (p.pmh||[]).length + (p.surgery||[]).length + (p.family||[]).length;
   document.getElementById('tc-p').textContent = (p.procedures||[]).length;
   document.getElementById('tc-va').textContent = (p.vaccines||[]).length;
@@ -1092,7 +1095,7 @@ function renderOverview() {
       </div>
       <div class="sc">
         <div class="sc-head"><h3>⚠️ Allergies</h3><button class="btn sm" onclick="openM('modal-allergy')">+ Add</button></div>
-        <div class="sc-body">${!(p.allergies||[]).length ? '<div style="color:var(--green);font-size:13px">✓ No Known Drug Allergies (NKDA)</div>' : p.allergies.map(a=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge ${a.severity?.includes('Life')||a.severity==='Severe'?'red':a.severity==='Moderate'?'yellow':'blue'}">${a.severity}</span><strong style="font-size:13px">${a.allergen}</strong><span style="color:var(--text2);font-size:12px">→ ${a.reaction||'—'}</span></div>`).join('')}</div>
+        <div class="sc-body">${(()=>{ const active=(p.allergies||[]).filter(a=>!a.inactive); const inactiveCount=(p.allergies||[]).length-active.length; return (!active.length ? '<div style="color:var(--green);font-size:13px">✓ No Known Drug Allergies (NKDA)</div>' : active.map(a=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge ${a.severity?.includes('Life')||a.severity==='Severe'?'red':a.severity==='Moderate'?'yellow':'blue'}">${a.severity}</span><strong style="font-size:13px">${a.allergen}</strong><span style="color:var(--text2);font-size:12px">→ ${a.reaction||'—'}</span></div>`).join('')) + (inactiveCount>0?`<div style="font-size:10px;color:var(--text3);margin-top:6px">${inactiveCount} inactive allerg${inactiveCount>1?'ies':'y'} — see Allergies tab</div>`:''); })()}</div>
       </div>
     </div>
     <div>
@@ -1130,7 +1133,7 @@ function renderVitals() {
         <div style="display:flex;justify-content:space-between;margin-bottom:10px">
           <span style="font-size:11px;font-weight:600;color:var(--text2)">Entry #${vitals.length-ri}</span>
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:10px;color:var(--text3);font-family:var(--mono)">${fmtDT(v.time)} · by ${v.by}</span>
+            <span style="font-size:10px;color:var(--text3);font-family:var(--mono)">${fmtDT(v.time)} · by ${v.performedBy||v.by}</span>
             <button class="btn warning sm" onclick="editVitals(${i})">✏ Edit</button>
             <button class="btn danger sm" onclick="deleteSubItem('vitals',${i})">× Remove</button>
           </div>
@@ -1146,6 +1149,7 @@ function renderVitals() {
           ${v.pain!==undefined&&v.pain!==''?`<div class="v-card"><div class="v-label">Pain</div><div class="v-val ${v.pain>=7?'v-high':v.pain>=4?'v-low':''}">${v.pain}/10</div></div>`:''}
         </div>
         ${v.notes?`<div style="margin-top:8px;font-size:11px;color:var(--text2)">📝 ${v.notes}</div>`:''}
+        ${v.performedBy?`<div style="margin-top:6px;font-size:11px;color:var(--text3)">👤 Performed by: <strong style="color:var(--text2)">${v.performedBy}</strong></div>`:''}
       </div>`;
     }).join('')
   }</div></div>`;
@@ -1158,16 +1162,19 @@ function renderMeds() {
   const meds = currentPatient.medications || [];
   document.getElementById('tab-medications').innerHTML = `<div class="sc"><div class="sc-head"><h3>💊 Medication List</h3><button class="btn primary sm" onclick="openM('modal-med')">+ Add Medication</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Medication</th><th>Dose</th><th>Route</th><th>Frequency</th><th>Indication</th><th>Status</th><th>By</th><th></th></tr></thead><tbody>${
     !meds.length ? `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">💊</div>No medications documented</div></td></tr>` :
-    meds.map((m,i)=>`<tr>
-      <td><strong>${m.name}</strong></td>
+    meds.map((m,i)=>`<tr style="${m.status==='Discontinued'?'opacity:0.5;':''}">
+      <td><strong>${m.name}</strong>${m.status==='Discontinued'?` <span style="font-size:10px;color:var(--text3);font-style:italic">discontinued</span>`:''}</td>
       <td style="font-family:var(--mono)">${m.dose}</td>
       <td>${m.route}</td><td>${m.freq}</td>
       <td style="color:var(--text2)">${m.ind||m.indication||'—'}</td>
       <td><span class="badge ${m.status==='Active'?'green':m.status==='Discontinued'?'red':'yellow'}">${m.status}</span></td>
       <td style="font-size:11px;color:var(--text2)">${m.by||'—'}</td>
-      <td style="white-space:nowrap">
-        <button class="btn warning sm" onclick="editMed(${i})" style="margin-right:4px">✏ Edit</button>
-        <button class="btn danger sm" onclick="deleteSubItem('medications',${i})">×</button>
+      <td style="white-space:nowrap;display:flex;gap:4px">
+        <button class="btn warning sm" onclick="editMed(${i})">✏ Edit</button>
+        ${m.status!=='Discontinued'
+          ? `<button class="btn danger sm" onclick="discontinueMed(${i})" title="Mark as discontinued">⊘ D/C</button>`
+          : `<button class="btn sm" onclick="reactivateMed(${i})" title="Reactivate medication">↺ Reactivate</button>`}
+        <button class="btn danger sm" onclick="deleteMedConfirm(${i})" title="Permanently delete record" style="opacity:0.5;font-size:10px">🗑</button>
       </td>
     </tr>`).join('')
   }</tbody></table></div></div>`;
@@ -1180,16 +1187,19 @@ function renderAllergies() {
   const allergies = currentPatient.allergies || [];
   document.getElementById('tab-allergies').innerHTML = `<div class="sc"><div class="sc-head"><h3>⚠️ Allergy List</h3><button class="btn primary sm" onclick="openM('modal-allergy')">+ Add Allergy</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Allergen</th><th>Type</th><th>Reaction</th><th>Severity</th><th>Onset</th><th>By</th><th></th></tr></thead><tbody>${
     !allergies.length ? `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">✓</div>No Known Drug Allergies (NKDA)</div></td></tr>` :
-    allergies.map((a,i)=>`<tr>
-      <td><strong>${a.allergen||a.name}</strong></td>
-      <td><span class="badge blue">${a.type}</span></td>
+    allergies.map((a,i)=>`<tr style="${a.inactive?'opacity:0.45;':''}">
+      <td><strong>${a.allergen||a.name}</strong>${a.inactive?` <span style="font-size:10px;color:var(--text3);font-style:italic">inactive</span>`:''}</td>
+      <td><span class="badge ${a.inactive?'':'blue'}" style="${a.inactive?'background:var(--surface3);color:var(--text3)':''}">${a.type}</span></td>
       <td>${a.reaction||a.react||'—'}</td>
-      <td><span class="badge ${(a.severity||'').includes('Life')||(a.severity)==='Severe'?'red':(a.severity)==='Moderate'?'yellow':'blue'}">${a.severity}</span></td>
+      <td><span class="badge ${a.inactive?'':((a.severity||'').includes('Life')||(a.severity)==='Severe'?'red':(a.severity)==='Moderate'?'yellow':'blue')}" style="${a.inactive?'background:var(--surface3);color:var(--text3)':''}">${a.severity}</span></td>
       <td style="color:var(--text2)">${a.onset||'—'}</td>
       <td style="font-size:11px;color:var(--text2)">${a.by||'—'}</td>
-      <td style="white-space:nowrap">
-        <button class="btn warning sm" onclick="editAllergy(${i})" style="margin-right:4px">✏ Edit</button>
-        <button class="btn danger sm" onclick="deleteSubItem('allergies',${i})">×</button>
+      <td style="white-space:nowrap;display:flex;gap:4px">
+        <button class="btn warning sm" onclick="editAllergy(${i})">✏ Edit</button>
+        ${!a.inactive
+          ? `<button class="btn danger sm" onclick="inactivateAllergy(${i})" title="Mark as no longer active">⊘ Inactivate</button>`
+          : `<button class="btn sm" onclick="reactivateAllergy(${i})" title="Reactivate allergy">↺ Reactivate</button>`}
+        <button class="btn danger sm" onclick="deleteAllergyConfirm(${i})" title="Permanently delete record" style="opacity:0.5;font-size:10px">🗑</button>
       </td>
     </tr>`).join('')
   }</tbody></table></div></div>`;
@@ -1255,8 +1265,8 @@ function renderPMH() {
 // ═══════════════════════════════════════════
 function renderProcedures() {
   const procs = currentPatient.procedures || [];
-  document.getElementById('tab-procedures').innerHTML = `<div class="sc"><div class="sc-head"><h3>🔬 Procedures & Diagnostics</h3><button class="btn primary sm" onclick="openM('modal-procedure')">+ Add</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Date</th><th>Procedure</th><th>Type</th><th>Provider</th><th>Results</th><th>Status</th><th></th></tr></thead><tbody>${
-    !procs.length?`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🔬</div>No procedures documented</div></td></tr>`:
+  document.getElementById('tab-procedures').innerHTML = `<div class="sc"><div class="sc-head"><h3>🔬 Procedures & Diagnostics</h3><button class="btn primary sm" onclick="openM('modal-procedure')">+ Add</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Date</th><th>Procedure</th><th>Type</th><th>Provider</th><th>Results</th><th>Status</th><th>Performed By</th><th></th></tr></thead><tbody>${
+    !procs.length?`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🔬</div>No procedures documented</div></td></tr>`:
     procs.map((pr,i)=>`<tr>
       <td style="font-size:11px;font-family:var(--mono)">${fmtDate(pr.date)}</td>
       <td><strong>${pr.name}</strong></td>
@@ -1264,6 +1274,7 @@ function renderProcedures() {
       <td style="color:var(--text2)">${pr.provider||pr.prov||'—'}</td>
       <td style="color:var(--text2);font-size:11px;max-width:180px">${pr.results||'—'}</td>
       <td><span class="badge ${pr.status==='Completed'?'green':pr.status==='Cancelled'?'red':'yellow'}">${pr.status}</span></td>
+      <td style="color:var(--text2);font-size:11px">${pr.performedBy||pr.by||'—'}</td>
       <td style="white-space:nowrap">
         <button class="btn warning sm" onclick="editProcedure(${i})" style="margin-right:4px">✏ Edit</button>
         <button class="btn danger sm" onclick="deleteSubItem('procedures',${i})">×</button>
@@ -1277,8 +1288,8 @@ function renderProcedures() {
 // ═══════════════════════════════════════════
 function renderVaccines() {
   const vaccs = currentPatient.vaccines || [];
-  document.getElementById('tab-vaccines').innerHTML = `<div class="sc"><div class="sc-head"><h3>💉 Vaccines & Injections</h3><button class="btn primary sm" onclick="openM('modal-vaccine')">+ Add</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Date</th><th>Name</th><th>Type</th><th>Dose/Lot</th><th>Site</th><th>Route</th><th>Given By</th><th></th></tr></thead><tbody>${
-    !vaccs.length?`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">💉</div>No vaccines or injections documented</div></td></tr>`:
+  document.getElementById('tab-vaccines').innerHTML = `<div class="sc"><div class="sc-head"><h3>💉 Vaccines & Injections</h3><button class="btn primary sm" onclick="openM('modal-vaccine')">+ Add</button></div><div class="sc-body"><table class="dt"><thead><tr><th>Date</th><th>Name</th><th>Type</th><th>Dose/Lot</th><th>Site</th><th>Route</th><th>Given By</th><th>Performed By</th><th></th></tr></thead><tbody>${
+    !vaccs.length?`<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">💉</div>No vaccines or injections documented</div></td></tr>`:
     vaccs.map((v,i)=>`<tr>
       <td style="font-size:11px;font-family:var(--mono)">${fmtDate(v.date)}</td>
       <td><strong>${v.name}</strong></td>
@@ -1287,6 +1298,7 @@ function renderVaccines() {
       <td style="color:var(--text2)">${v.site||'—'}</td>
       <td style="color:var(--text2)">${v.route||'—'}</td>
       <td style="color:var(--text2);font-size:11px">${v.admin||'—'}</td>
+      <td style="color:var(--text2);font-size:11px">${v.performedBy||v.by||'—'}</td>
       <td style="white-space:nowrap">
         <button class="btn warning sm" onclick="editVaccine(${i})" style="margin-right:4px">✏ Edit</button>
         <button class="btn danger sm" onclick="deleteSubItem('vaccines',${i})">×</button>
@@ -1307,7 +1319,7 @@ function renderEKGs() {
       return `<div class="ekg-record">
         <canvas class="ekg-canvas" id="ekgc-${i}"></canvas>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px">
-          <div><div style="font-size:14px;font-weight:600;color:#52c46a">${e.rhythm}</div><div style="font-size:11px;color:#3a8a4a;margin-top:2px">Axis: ${e.axis} · ST: ${e.st}</div></div>
+          <div><div style="font-size:14px;font-weight:600;color:var(--text)">${e.rhythm}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Axis: ${e.axis} · ST: ${e.st}</div></div>
           <div style="display:flex;gap:8px">
             <button class="btn warning sm" onclick="editEKG(${i})">✏ Edit</button>
             <button class="btn danger sm" onclick="deleteSubItem('ekgs',${i})">× Remove</button>
@@ -1319,7 +1331,8 @@ function renderEKGs() {
           <div class="ekg-d"><label>PR</label><span>${e.pr||'—'} ms</span></div>
           <div class="ekg-d"><label>QRS</label><span>${e.qrs||'—'} ms</span></div>
           <div class="ekg-d"><label>QT/QTc</label><span>${e.qt||'—'}/${e.qtc||'—'} ms</span></div>
-          <div class="ekg-d"><label>Provider</label><span>${e.provider||e.prov||'—'}</span></div>
+          <div class="ekg-d"><label>Doctor</label><span>${e.provider||e.prov||'—'}</span></div>
+          <div class="ekg-d"><label>Performed By</label><span>${e.performedBy||e.by||'—'}</span></div>
         </div>
         ${e.interpretation||e.interp?`<div class="ekg-interp">${e.interpretation||e.interp}</div>`:''}
       </div>`;
@@ -1399,6 +1412,44 @@ async function replaceArrayItem(field, index, item) {
   arr[index] = item;
   await updatePatient({ [field]: arr });
 }
+async function discontinueMed(index) {
+  const arr = [...(currentPatient.medications||[])];
+  arr[index] = { ...arr[index], status: 'Discontinued', discontinuedAt: new Date().toISOString(), discontinuedBy: currentUserProfile?.displayName || currentUser.email };
+  await updatePatient({ medications: arr });
+  toast('Medication discontinued');
+}
+
+async function reactivateMed(index) {
+  const arr = [...(currentPatient.medications||[])];
+  arr[index] = { ...arr[index], status: 'Active', discontinuedAt: null, discontinuedBy: null };
+  await updatePatient({ medications: arr });
+  toast('Medication reactivated');
+}
+
+async function deleteMedConfirm(index) {
+  if (!confirm('Permanently delete this medication record? This cannot be undone.')) return;
+  await deleteSubItem('medications', index);
+}
+
+async function inactivateAllergy(index) {
+  const arr = [...(currentPatient.allergies||[])];
+  arr[index] = { ...arr[index], inactive: true, inactivatedAt: new Date().toISOString(), inactivatedBy: currentUserProfile?.displayName || currentUser.email };
+  await updatePatient({ allergies: arr });
+  toast('Allergy marked inactive');
+}
+
+async function reactivateAllergy(index) {
+  const arr = [...(currentPatient.allergies||[])];
+  arr[index] = { ...arr[index], inactive: false, inactivatedAt: null, inactivatedBy: null };
+  await updatePatient({ allergies: arr });
+  toast('Allergy reactivated');
+}
+
+async function deleteAllergyConfirm(index) {
+  if (!confirm('Permanently delete this allergy record? This cannot be undone.')) return;
+  await deleteSubItem('allergies', index);
+}
+
 async function deleteSubItem(field, index) {
   if (!confirm('Remove this record?')) return;
   const arr = [...(currentPatient[field]||[])];
@@ -1423,6 +1474,7 @@ function editVitals(i) {
   document.getElementById('v-ht').value = v.ht||v.height||'';
   document.getElementById('v-pain').value = v.pain!==undefined?v.pain:'';
   document.getElementById('v-notes').value = v.notes||'';
+  document.getElementById('v-performed-by').value = v.performedBy||v.by||'';
   document.getElementById('modal-vitals').classList.remove('hidden');
 }
 
@@ -1490,6 +1542,7 @@ function editProcedure(i) {
   document.getElementById('pr-prov').value = pr.provider||pr.prov||'';
   document.getElementById('pr-results').value = pr.results||'';
   setSelectVal('pr-stat', pr.status);
+  document.getElementById('pr-performed-by').value = pr.performedBy||pr.by||'';
   document.getElementById('modal-procedure').classList.remove('hidden');
 }
 
@@ -1504,6 +1557,7 @@ function editVaccine(i) {
   setSelectVal('vc-site', v.site);
   document.getElementById('vc-admin').value = v.admin||'';
   document.getElementById('vc-notes').value = v.notes||'';
+  document.getElementById('vc-performed-by').value = v.performedBy||v.by||'';
   document.getElementById('modal-vaccine').classList.remove('hidden');
 }
 
@@ -1522,6 +1576,7 @@ function editEKG(i) {
   setSelectVal('ek-st', e.st);
   document.getElementById('ek-interp').value = e.interpretation||e.interp||'';
   document.getElementById('ek-prov').value = e.provider||e.prov||'';
+  document.getElementById('ek-performed-by').value = e.performedBy||e.by||'';
   document.getElementById('modal-ekg').classList.remove('hidden');
 }
 
@@ -1551,6 +1606,7 @@ async function saveVitals() {
     spo2: document.getElementById('v-spo2').value, temp: document.getElementById('v-temp').value,
     wt: document.getElementById('v-wt').value, ht: document.getElementById('v-ht').value,
     pain: document.getElementById('v-pain').value, notes: document.getElementById('v-notes').value,
+    performedBy: document.getElementById('v-performed-by').value || currentUserProfile?.displayName || currentUser.email,
     by: currentUserProfile?.displayName || currentUser.email
   };
   if (idx >= 0) {
@@ -1563,7 +1619,7 @@ async function saveVitals() {
     toast('Vitals recorded');
   }
   closeM('modal-vitals');
-  ['v-sbp','v-dbp','v-hr','v-rr','v-spo2','v-temp','v-wt','v-ht','v-pain','v-notes'].forEach(id=>document.getElementById(id).value='');
+  ['v-sbp','v-dbp','v-hr','v-rr','v-spo2','v-temp','v-wt','v-ht','v-pain','v-notes','v-performed-by'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('v-edit-index').value = '-1';
 }
 
@@ -1661,7 +1717,7 @@ async function saveProcedure() {
   const name = document.getElementById('pr-name').value.trim();
   if (!name) { toast('Procedure name required','error'); return; }
   const idx = parseInt(document.getElementById('pr-edit-index').value);
-  const item = { name, date: document.getElementById('pr-date').value, type: document.getElementById('pr-type').value, provider: document.getElementById('pr-prov').value, results: document.getElementById('pr-results').value, status: document.getElementById('pr-stat').value, by: currentUserProfile?.displayName || currentUser.email };
+  const item = { name, date: document.getElementById('pr-date').value, type: document.getElementById('pr-type').value, provider: document.getElementById('pr-prov').value, results: document.getElementById('pr-results').value, status: document.getElementById('pr-stat').value, performedBy: document.getElementById('pr-performed-by').value || currentUserProfile?.displayName || currentUser.email, by: currentUserProfile?.displayName || currentUser.email };
   if (idx >= 0) {
     item.time = (currentPatient.procedures[idx]||{}).time || new Date().toISOString();
     await replaceArrayItem('procedures', idx, item); toast('Procedure updated');
@@ -1670,7 +1726,7 @@ async function saveProcedure() {
     await pushToArray('procedures', item); toast('Procedure added');
   }
   closeM('modal-procedure');
-  ['pr-name','pr-date','pr-prov','pr-results'].forEach(id=>document.getElementById(id).value='');
+  ['pr-name','pr-date','pr-prov','pr-results','pr-performed-by'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('pr-edit-index').value = '-1';
 }
 
@@ -1678,7 +1734,7 @@ async function saveVaccine() {
   const name = document.getElementById('vc-name').value.trim();
   if (!name) { toast('Name required','error'); return; }
   const idx = parseInt(document.getElementById('vc-edit-index').value);
-  const item = { name, date: document.getElementById('vc-date').value, type: document.getElementById('vc-type').value, dose: document.getElementById('vc-dose').value, route: document.getElementById('vc-route').value, site: document.getElementById('vc-site').value, admin: document.getElementById('vc-admin').value, notes: document.getElementById('vc-notes').value, by: currentUserProfile?.displayName || currentUser.email };
+  const item = { name, date: document.getElementById('vc-date').value, type: document.getElementById('vc-type').value, dose: document.getElementById('vc-dose').value, route: document.getElementById('vc-route').value, site: document.getElementById('vc-site').value, admin: document.getElementById('vc-admin').value, notes: document.getElementById('vc-notes').value, performedBy: document.getElementById('vc-performed-by').value || currentUserProfile?.displayName || currentUser.email, by: currentUserProfile?.displayName || currentUser.email };
   if (idx >= 0) {
     item.time = (currentPatient.vaccines[idx]||{}).time || new Date().toISOString();
     await replaceArrayItem('vaccines', idx, item); toast('Vaccine record updated');
@@ -1687,7 +1743,7 @@ async function saveVaccine() {
     await pushToArray('vaccines', item); toast('Vaccine/injection recorded');
   }
   closeM('modal-vaccine');
-  ['vc-name','vc-date','vc-dose','vc-admin','vc-notes'].forEach(id=>document.getElementById(id).value='');
+  ['vc-name','vc-date','vc-dose','vc-admin','vc-notes','vc-performed-by'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('vc-edit-index').value = '-1';
 }
 
@@ -1695,7 +1751,7 @@ async function saveEKG() {
   const interp = document.getElementById('ek-interp').value.trim();
   if (!interp) { toast('Interpretation required','error'); return; }
   const idx = parseInt(document.getElementById('ek-edit-index').value);
-  const item = { date: document.getElementById('ek-date').value, time: document.getElementById('ek-time').value, rhythm: document.getElementById('ek-rhythm').value, hr: document.getElementById('ek-hr').value, pr: document.getElementById('ek-pr').value, qrs: document.getElementById('ek-qrs').value, qt: document.getElementById('ek-qt').value, qtc: document.getElementById('ek-qtc').value, axis: document.getElementById('ek-axis').value, st: document.getElementById('ek-st').value, interpretation: interp, provider: document.getElementById('ek-prov').value, by: currentUserProfile?.displayName || currentUser.email };
+  const item = { date: document.getElementById('ek-date').value, time: document.getElementById('ek-time').value, rhythm: document.getElementById('ek-rhythm').value, hr: document.getElementById('ek-hr').value, pr: document.getElementById('ek-pr').value, qrs: document.getElementById('ek-qrs').value, qt: document.getElementById('ek-qt').value, qtc: document.getElementById('ek-qtc').value, axis: document.getElementById('ek-axis').value, st: document.getElementById('ek-st').value, interpretation: interp, provider: document.getElementById('ek-prov').value, performedBy: document.getElementById('ek-performed-by').value || currentUserProfile?.displayName || currentUser.email, by: currentUserProfile?.displayName || currentUser.email };
   if (idx >= 0) {
     item.recordedAt = (currentPatient.ekgs[idx]||{}).recordedAt || new Date().toISOString();
     await replaceArrayItem('ekgs', idx, item); toast('EKG updated');
@@ -1704,7 +1760,7 @@ async function saveEKG() {
     await pushToArray('ekgs', item); toast('EKG recorded');
   }
   closeM('modal-ekg');
-  ['ek-date','ek-time','ek-hr','ek-pr','ek-qrs','ek-qt','ek-qtc','ek-interp'].forEach(id=>document.getElementById(id).value='');
+  ['ek-date','ek-time','ek-hr','ek-pr','ek-qrs','ek-qt','ek-qtc','ek-interp','ek-prov','ek-performed-by'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ek-edit-index').value = '-1';
 }
 
@@ -1774,6 +1830,8 @@ async function registerPatient() {
 function openM(id) {
   const dateFields = { 'modal-vitals':[], 'modal-procedure':['pr-date'], 'modal-vaccine':['vc-date'], 'modal-ekg':['ek-date','ek-time'] };
   if (dateFields[id]) { dateFields[id].forEach(fid => { const el=document.getElementById(fid); if(el&&!el.value) el.value = fid.includes('time') ? nowTime() : today(); }); }
+  const pbMap = { 'modal-vitals':'v-performed-by', 'modal-procedure':'pr-performed-by', 'modal-vaccine':'vc-performed-by', 'modal-ekg':'ek-performed-by' };
+  if (pbMap[id]) { const el=document.getElementById(pbMap[id]); if(el&&!el.value) el.value = currentUserProfile?.displayName || (currentUser?.email||''); }
   document.getElementById(id).classList.remove('hidden');
 }
 function closeM(id) { document.getElementById(id).classList.add('hidden'); }
