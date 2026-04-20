@@ -405,6 +405,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="c-tab" data-tab="vaccines">Vaccines / Injections <span class="tc" id="tc-va">0</span></div>
           <div class="c-tab" data-tab="ekg">EKG <span class="tc" id="tc-e">0</span></div>
           <div class="c-tab" data-tab="notes">Notes <span class="tc" id="tc-n">0</span></div>
+          <div class="c-tab" data-tab="vision">👁 Vision</div>
         </div>
         <div class="chart-body" id="chart-body">
           <div class="tab-content active" id="tab-overview"></div>
@@ -416,6 +417,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="tab-content" id="tab-vaccines"></div>
           <div class="tab-content" id="tab-ekg"></div>
           <div class="tab-content" id="tab-notes"></div>
+          <div class="tab-content" id="tab-vision"></div>
         </div>
       </div>
     </div>
@@ -602,6 +604,15 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       </div>
       <div class="mf"><label>Diet</label><input type="text" id="soc-diet" placeholder="e.g. Regular, Vegetarian" /></div>
       <div class="mf"><label>Additional Notes</label><textarea id="soc-notes" placeholder="Living situation, stressors..."></textarea></div>
+      <div style="border-top:1px solid var(--border);margin:16px 0 12px;padding-top:14px">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">Screening Questions</div>
+        <div class="fr c2">
+          <div class="mf"><label>Chance of Pregnancy?</label><select id="soc-pregnant"><option value="">—</option><option>Yes</option><option>No</option><option>Possibly</option><option>N/A</option></select></div>
+          <div class="mf"><label>First Day of Last Menstrual Cycle</label><input type="date" id="soc-lmp" /></div>
+        </div>
+        <div class="mf"><label>Traveled Outside the Country in Past Year?</label><select id="soc-travel"><option value="">—</option><option>No</option><option>Yes</option></select></div>
+        <div class="mf" id="soc-travel-dest-wrap" style="display:none"><label>Destination(s)</label><input type="text" id="soc-travel-dest" placeholder="e.g. Mexico, Europe" /></div>
+      </div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeM('modal-social')">Cancel</button><button class="btn primary" onclick="saveSocial()">Save</button></div>
   </div>
@@ -654,6 +665,91 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <div class="fr c2"><div class="mf"><label>Ordered / Interpreted By (Doctor)</label><input type="text" id="ek-prov" placeholder="Dr. Smith" /></div><div class="mf"><label>Performed By</label><input type="text" id="ek-performed-by" placeholder="Student name" /></div></div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeM('modal-ekg')">Cancel</button><button class="btn primary" onclick="saveEKG()">Save EKG</button></div>
+  </div>
+</div>
+
+<!-- VISION SCREENING -->
+<div class="overlay hidden" id="modal-vision">
+  <div class="modal">
+    <div class="modal-head"><h2>👁 Vision Screening</h2><button class="modal-x" onclick="closeM('modal-vision')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="vs-edit-index" value="-1" />
+      <div class="fr c2">
+        <div class="mf"><label>Date</label><input type="date" id="vs-date" /></div>
+        <div class="mf"><label>Performed By</label><input type="text" id="vs-performed-by" placeholder="Student name" /></div>
+      </div>
+
+      <!-- DISTANT VISION -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px">
+        <div style="background:var(--accent-soft);padding:8px 14px;font-size:11px;font-weight:600;color:var(--accent-hover);text-transform:uppercase;letter-spacing:0.06em">🔭 Distant Vision</div>
+        <div style="padding:14px">
+          <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="vs-dist-corrected" style="width:15px;height:15px;cursor:pointer" />
+              Corrected (glasses / contacts)
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="vs-dist-uncorrected" style="width:15px;height:15px;cursor:pointer" />
+              Uncorrected (no correction)
+            </label>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="min-width:160px;font-size:13px;font-weight:600">OD <span style="font-weight:400;color:var(--text3)">(Right Eye)</span></span>
+              <span style="font-size:15px;font-weight:700;color:var(--text2);font-family:var(--mono)">20 /</span>
+              <input type="text" id="vs-dist-od" placeholder="e.g. 20" style="width:85px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:var(--mono);background:var(--surface2);color:var(--text)" />
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="min-width:160px;font-size:13px;font-weight:600">OS <span style="font-weight:400;color:var(--text3)">(Left Eye)</span></span>
+              <span style="font-size:15px;font-weight:700;color:var(--text2);font-family:var(--mono)">20 /</span>
+              <input type="text" id="vs-dist-os" placeholder="e.g. 40" style="width:85px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:var(--mono);background:var(--surface2);color:var(--text)" />
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="min-width:160px;font-size:13px;font-weight:600">OU <span style="font-weight:400;color:var(--text3)">(Both Eyes)</span></span>
+              <span style="font-size:15px;font-weight:700;color:var(--text2);font-family:var(--mono)">20 /</span>
+              <input type="text" id="vs-dist-ou" placeholder="e.g. 20" style="width:85px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:var(--mono);background:var(--surface2);color:var(--text)" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEAR VISION -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px">
+        <div style="background:var(--green-soft);padding:8px 14px;font-size:11px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:0.06em">🔬 Near Vision</div>
+        <div style="padding:14px">
+          <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="vs-near-corrected" style="width:15px;height:15px;cursor:pointer" />
+              Corrected (glasses / contacts)
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="vs-near-uncorrected" style="width:15px;height:15px;cursor:pointer" />
+              Uncorrected (no correction)
+            </label>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="min-width:160px;font-size:13px;font-weight:600">OD <span style="font-weight:400;color:var(--text3)">(Right Eye)</span></span>
+              <span style="font-size:15px;font-weight:700;color:var(--text2);font-family:var(--mono)">20 /</span>
+              <input type="text" id="vs-near-od" placeholder="e.g. 20" style="width:85px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:var(--mono);background:var(--surface2);color:var(--text)" />
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="min-width:160px;font-size:13px;font-weight:600">OS <span style="font-weight:400;color:var(--text3)">(Left Eye)</span></span>
+              <span style="font-size:15px;font-weight:700;color:var(--text2);font-family:var(--mono)">20 /</span>
+              <input type="text" id="vs-near-os" placeholder="e.g. 40" style="width:85px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:var(--mono);background:var(--surface2);color:var(--text)" />
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="min-width:160px;font-size:13px;font-weight:600">OU <span style="font-weight:400;color:var(--text3)">(Both Eyes)</span></span>
+              <span style="font-size:15px;font-weight:700;color:var(--text2);font-family:var(--mono)">20 /</span>
+              <input type="text" id="vs-near-ou" placeholder="e.g. 20" style="width:85px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:var(--mono);background:var(--surface2);color:var(--text)" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mf"><label>Notes / Observations</label><textarea id="vs-notes" placeholder="Additional observations..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-vision')">Cancel</button><button class="btn primary" onclick="saveVision()">Save Vision Screening</button></div>
   </div>
 </div>
 
@@ -1074,7 +1170,7 @@ function setTab(name) {
 
 function renderAllTabs() {
   renderOverview(); renderVitals(); renderMeds(); renderAllergies();
-  renderPMH(); renderProcedures(); renderVaccines(); renderEKGs(); renderNotes();
+  renderPMH(); renderProcedures(); renderVaccines(); renderEKGs(); renderNotes(); renderVision();
 }
 
 // ═══════════════════════════════════════════
@@ -1254,7 +1350,7 @@ function renderPMH() {
       }</tbody></table></div></div>
       <div class="sc"><div class="sc-head"><h3>👤 Social History</h3><button class="btn primary sm" onclick="openSocialModal()">Edit</button></div><div class="sc-body">${
         !p.social ? '<div class="empty-state"><div class="empty-icon">👤</div>No social history documented</div>' :
-        `<div class="data-grid">${Object.entries({Tobacco:p.social.tobacco||p.social.tob,Alcohol:p.social.alcohol||p.social.alc,'Drug Use':p.social.drug||p.social.drugs,Exercise:p.social.exercise||p.social.ex,Occupation:p.social.occupation||p.social.occ,'Marital Status':p.social.marital||p.social.mar,Diet:p.social.diet}).filter(([k,v])=>v).map(([k,v])=>`<div class="df"><label>${k}</label><div class="val">${v}</div></div>`).join('')}${p.social.notes?`<div class="df" style="grid-column:1/-1"><label>Notes</label><div class="val">${p.social.notes}</div></div>`:''}</div>`
+        `<div class="data-grid">${Object.entries({Tobacco:p.social.tobacco||p.social.tob,Alcohol:p.social.alcohol||p.social.alc,'Drug Use':p.social.drug||p.social.drugs,Exercise:p.social.exercise||p.social.ex,Occupation:p.social.occupation||p.social.occ,'Marital Status':p.social.marital||p.social.mar,Diet:p.social.diet,'Pregnancy?':p.social.pregnant,'Last Menstrual Cycle':p.social.lmp,'International Travel':p.social.travel==='Yes'?(p.social.travelDest?`Yes — ${p.social.travelDest}`:'Yes'):p.social.travel}).filter(([k,v])=>v).map(([k,v])=>`<div class="df"><label>${k}</label><div class="val">${v}</div></div>`).join('')}${p.social.notes?`<div class="df" style="grid-column:1/-1"><label>Notes</label><div class="val">${p.social.notes}</div></div>`:''}</div>`
       }</div></div>
     </div>
   </div>`;
@@ -1709,7 +1805,8 @@ async function saveFamilyHx() {
 }
 
 async function saveSocial() {
-  await updatePatient({ social: { tobacco: document.getElementById('soc-tob').value, alcohol: document.getElementById('soc-alc').value, drug: document.getElementById('soc-drug').value, exercise: document.getElementById('soc-ex').value, occupation: document.getElementById('soc-occ').value, marital: document.getElementById('soc-mar').value, diet: document.getElementById('soc-diet').value, notes: document.getElementById('soc-notes').value } });
+  const travelSel = document.getElementById('soc-travel').value;
+  await updatePatient({ social: { tobacco: document.getElementById('soc-tob').value, alcohol: document.getElementById('soc-alc').value, drug: document.getElementById('soc-drug').value, exercise: document.getElementById('soc-ex').value, occupation: document.getElementById('soc-occ').value, marital: document.getElementById('soc-mar').value, diet: document.getElementById('soc-diet').value, notes: document.getElementById('soc-notes').value, pregnant: document.getElementById('soc-pregnant').value, lmp: document.getElementById('soc-lmp').value, travel: travelSel, travelDest: travelSel==='Yes' ? document.getElementById('soc-travel-dest').value : '' } });
   closeM('modal-social'); toast('Social history saved');
 }
 
@@ -1781,6 +1878,106 @@ async function saveNote() {
   document.getElementById('nt-edit-index').value = '-1';
 }
 
+// ═══════════════════════════════════════════
+// VISION SCREENING
+// ═══════════════════════════════════════════
+function renderVision() {
+  const screenings = currentPatient.vision || [];
+  document.getElementById('tab-vision').innerHTML = `<div class="sc"><div class="sc-head"><h3>👁 Vision Screening</h3><button class="btn primary sm" onclick="openM('modal-vision')">+ Record Screening</button></div><div class="sc-body">${
+    !screenings.length ? '<div class="empty-state"><div class="empty-icon">👁</div>No vision screenings recorded</div>' :
+    screenings.slice().reverse().map((v,ri) => {
+      const i = screenings.length-1-ri;
+      const distCorr = [v.distCorrected?'Corrected':'', v.distUncorrected?'Uncorrected':''].filter(Boolean).join(' & ') || '—';
+      const nearCorr = [v.nearCorrected?'Corrected':'', v.nearUncorrected?'Uncorrected':''].filter(Boolean).join(' & ') || '—';
+      const acuityCard = (label, val) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center">
+        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">${label}</div>
+        <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text)">${val ? `20/${val}` : '—'}</div>
+      </div>`;
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div>
+            <div style="font-weight:600;font-size:14px">Screening — ${v.date||'No date'}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">👤 ${v.performedBy||v.by||'—'}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn warning sm" onclick="editVision(${i})">✏ Edit</button>
+            <button class="btn danger sm" onclick="deleteSubItem('vision',${i})">× Remove</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <div style="font-size:10px;font-weight:600;color:var(--accent-hover);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">🔭 Distant · ${distCorr}</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              ${acuityCard('OD', v.distOd)}
+              ${acuityCard('OS', v.distOs)}
+              ${acuityCard('OU', v.distOu)}
+            </div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">🔬 Near · ${nearCorr}</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              ${acuityCard('OD', v.nearOd)}
+              ${acuityCard('OS', v.nearOs)}
+              ${acuityCard('OU', v.nearOu)}
+            </div>
+          </div>
+        </div>
+        ${v.notes ? `<div style="margin-top:10px;font-size:12px;color:var(--text2);padding:8px 10px;background:var(--surface3);border-radius:var(--radius)">📝 ${v.notes}</div>` : ''}
+      </div>`;
+    }).join('')
+  }</div></div>`;
+}
+
+async function saveVision() {
+  const idx = parseInt(document.getElementById('vs-edit-index').value);
+  const item = {
+    date: document.getElementById('vs-date').value,
+    distCorrected: document.getElementById('vs-dist-corrected').checked,
+    distUncorrected: document.getElementById('vs-dist-uncorrected').checked,
+    distOd: document.getElementById('vs-dist-od').value.trim(),
+    distOs: document.getElementById('vs-dist-os').value.trim(),
+    distOu: document.getElementById('vs-dist-ou').value.trim(),
+    nearCorrected: document.getElementById('vs-near-corrected').checked,
+    nearUncorrected: document.getElementById('vs-near-uncorrected').checked,
+    nearOd: document.getElementById('vs-near-od').value.trim(),
+    nearOs: document.getElementById('vs-near-os').value.trim(),
+    nearOu: document.getElementById('vs-near-ou').value.trim(),
+    notes: document.getElementById('vs-notes').value,
+    performedBy: document.getElementById('vs-performed-by').value || currentUserProfile?.displayName || currentUser.email,
+    by: currentUserProfile?.displayName || currentUser.email
+  };
+  if (idx >= 0) {
+    item.time = (currentPatient.vision[idx]||{}).time || new Date().toISOString();
+    await replaceArrayItem('vision', idx, item); toast('Vision screening updated');
+  } else {
+    item.time = new Date().toISOString();
+    await pushToArray('vision', item); toast('Vision screening recorded');
+  }
+  closeM('modal-vision');
+  ['vs-date','vs-dist-od','vs-dist-os','vs-dist-ou','vs-near-od','vs-near-os','vs-near-ou','vs-notes','vs-performed-by'].forEach(id => document.getElementById(id).value='');
+  ['vs-dist-corrected','vs-dist-uncorrected','vs-near-corrected','vs-near-uncorrected'].forEach(id => document.getElementById(id).checked=false);
+  document.getElementById('vs-edit-index').value = '-1';
+}
+
+function editVision(i) {
+  const v = currentPatient.vision[i];
+  document.getElementById('vs-edit-index').value = i;
+  document.getElementById('vs-date').value = v.date||'';
+  document.getElementById('vs-dist-corrected').checked = !!v.distCorrected;
+  document.getElementById('vs-dist-uncorrected').checked = !!v.distUncorrected;
+  document.getElementById('vs-dist-od').value = v.distOd||'';
+  document.getElementById('vs-dist-os').value = v.distOs||'';
+  document.getElementById('vs-dist-ou').value = v.distOu||'';
+  document.getElementById('vs-near-corrected').checked = !!v.nearCorrected;
+  document.getElementById('vs-near-uncorrected').checked = !!v.nearUncorrected;
+  document.getElementById('vs-near-od').value = v.nearOd||'';
+  document.getElementById('vs-near-os').value = v.nearOs||'';
+  document.getElementById('vs-near-ou').value = v.nearOu||'';
+  document.getElementById('vs-notes').value = v.notes||'';
+  document.getElementById('vs-performed-by').value = v.performedBy||v.by||'';
+  document.getElementById('modal-vision').classList.remove('hidden');
+}
+
 async function saveIntake() {
   const cc = document.getElementById('in-cc').value.trim();
   if (!cc) { toast('Chief complaint required','error'); return; }
@@ -1816,7 +2013,7 @@ async function registerPatient() {
   if (!first||!last) { toast('First and last name required','error'); return; }
   if (!dob) { toast('Date of birth required','error'); return; }
   const mrn = genMRN();
-  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: currentUserProfile?.displayName || currentUser.email, campusId: currentUserProfile?.campusId || 'unknown', campusName: currentUserProfile?.campusName || 'Unknown Campus', createdAt: firebase.firestore.FieldValue.serverTimestamp(), vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], notes:[] };
+  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: currentUserProfile?.displayName || currentUser.email, campusId: currentUserProfile?.campusId || 'unknown', campusName: currentUserProfile?.campusName || 'Unknown Campus', createdAt: firebase.firestore.FieldValue.serverTimestamp(), vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], notes:[], vision:[] };
   const cc = document.getElementById('nr-cc').value.trim();
   if (cc) data.notes = [{ type:'Admission Note', author: currentUserProfile?.displayName||currentUser.email, content:`CHIEF COMPLAINT:\n${cc}`, time: new Date().toISOString() }];
   try {
@@ -1828,9 +2025,9 @@ async function registerPatient() {
 }
 
 function openM(id) {
-  const dateFields = { 'modal-vitals':[], 'modal-procedure':['pr-date'], 'modal-vaccine':['vc-date'], 'modal-ekg':['ek-date','ek-time'] };
+  const dateFields = { 'modal-vitals':[], 'modal-procedure':['pr-date'], 'modal-vaccine':['vc-date'], 'modal-ekg':['ek-date','ek-time'], 'modal-vision':['vs-date'] };
   if (dateFields[id]) { dateFields[id].forEach(fid => { const el=document.getElementById(fid); if(el&&!el.value) el.value = fid.includes('time') ? nowTime() : today(); }); }
-  const pbMap = { 'modal-vitals':'v-performed-by', 'modal-procedure':'pr-performed-by', 'modal-vaccine':'vc-performed-by', 'modal-ekg':'ek-performed-by' };
+  const pbMap = { 'modal-vitals':'v-performed-by', 'modal-procedure':'pr-performed-by', 'modal-vaccine':'vc-performed-by', 'modal-ekg':'ek-performed-by', 'modal-vision':'vs-performed-by' };
   if (pbMap[id]) { const el=document.getElementById(pbMap[id]); if(el&&!el.value) el.value = currentUserProfile?.displayName || (currentUser?.email||''); }
   document.getElementById(id).classList.remove('hidden');
 }
@@ -1847,8 +2044,13 @@ function openEditDemo() {
 function openSocialModal() {
   if (!currentPatient) return;
   const s = currentPatient.social || {};
-  const fields = {'soc-tob':s.tobacco||s.tob,'soc-alc':s.alcohol||s.alc,'soc-drug':s.drug||s.drugs,'soc-ex':s.exercise||s.ex,'soc-occ':s.occupation||s.occ,'soc-mar':s.marital||s.mar,'soc-diet':s.diet,'soc-notes':s.notes};
+  const fields = {'soc-tob':s.tobacco||s.tob,'soc-alc':s.alcohol||s.alc,'soc-drug':s.drug||s.drugs,'soc-ex':s.exercise||s.ex,'soc-occ':s.occupation||s.occ,'soc-mar':s.marital||s.mar,'soc-diet':s.diet,'soc-notes':s.notes,'soc-lmp':s.lmp||'','soc-travel-dest':s.travelDest||''};
   Object.entries(fields).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.value=val||''; });
+  ['soc-pregnant','soc-travel'].forEach(id => { const key=id==='soc-pregnant'?'pregnant':'travel'; const el=document.getElementById(id); if(el&&s[key]) { for(let o of el.options){ if(o.value===s[key]){ el.value=o.value; break; } } } });
+  const travelDest = document.getElementById('soc-travel-dest-wrap');
+  const travelSel = document.getElementById('soc-travel');
+  travelDest.style.display = travelSel.value==='Yes' ? 'block' : 'none';
+  travelSel.onchange = () => { travelDest.style.display = travelSel.value==='Yes' ? 'block' : 'none'; };
   openM('modal-social');
 }
 
