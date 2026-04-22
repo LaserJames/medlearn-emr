@@ -248,6 +248,85 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .campus-card-meta { font-size: 11px; color: var(--text2); margin-top: 6px; }
 .campus-card-actions { display: flex; gap: 6px; margin-top: 12px; }
 .mf .hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+/* ── Review of Systems ───────────────────────────────────── */
+.ros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.ros-system {
+  background: var(--surface2, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ros-system-title {
+  background: var(--accent, #1a3a5c);
+  color: #fff;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 6px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ros-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border, #edf2f7);
+}
+.ros-row:last-child { border-bottom: none; }
+.ros-symptom-label { font-size: 12px; color: var(--text, #2d3748); flex: 1; }
+.ros-toggle-group { display: flex; gap: 4px; }
+.ros-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border, #cbd5e0);
+  background: var(--surface, #fff);
+  color: var(--text2, #4a5568);
+  transition: all 0.15s;
+  user-select: none;
+}
+.ros-toggle-btn:has(input:checked) {
+  background: #ebf8ff;
+  border-color: #3182ce;
+  color: #2b6cb0;
+  font-weight: 700;
+}
+.ros-toggle-btn input[type="radio"] { display: none; }
+/* View mode */
+.ros-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+.ros-view-system {
+  background: var(--surface2, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ros-view-system-title {
+  background: var(--accent, #2c5282);
+  color: #fff;
+  font-weight: 600;
+  font-size: 10px;
+  padding: 5px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ros-view-row { padding: 4px 10px; font-size: 12px; line-height: 1.5; }
+.ros-pos-label { font-weight: 700; color: #c53030; margin-right: 3px; }
+.ros-pos-val { color: #c53030; }
+.ros-neg-label { font-weight: 700; color: #276749; margin-right: 3px; }
+.ros-neg-val { color: var(--text2, #718096); }
 </style>
 </head>
 <body>
@@ -401,6 +480,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="c-tab" data-tab="medications">Medications <span class="tc" id="tc-m">0</span></div>
           <div class="c-tab" data-tab="allergies">Allergies <span class="tc" id="tc-a">0</span></div>
           <div class="c-tab" data-tab="pmh">PMH / History <span class="tc" id="tc-h">0</span></div>
+          <div class="c-tab" data-tab="ros">Review of Systems</div>
           <div class="c-tab" data-tab="procedures">Procedures <span class="tc" id="tc-p">0</span></div>
           <div class="c-tab" data-tab="vaccines">Vaccines / Injections <span class="tc" id="tc-va">0</span></div>
           <div class="c-tab" data-tab="ekg">EKG <span class="tc" id="tc-e">0</span></div>
@@ -413,6 +493,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="tab-content" id="tab-medications"></div>
           <div class="tab-content" id="tab-allergies"></div>
           <div class="tab-content" id="tab-pmh"></div>
+          <div class="tab-content" id="tab-ros"></div>
           <div class="tab-content" id="tab-procedures"></div>
           <div class="tab-content" id="tab-vaccines"></div>
           <div class="tab-content" id="tab-ekg"></div>
@@ -1170,7 +1251,7 @@ function setTab(name) {
 
 function renderAllTabs() {
   renderOverview(); renderVitals(); renderMeds(); renderAllergies();
-  renderPMH(); renderProcedures(); renderVaccines(); renderEKGs(); renderNotes(); renderVision();
+  renderPMH(); renderROS(); renderProcedures(); renderVaccines(); renderEKGs(); renderNotes(); renderVision();
 }
 
 // ═══════════════════════════════════════════
@@ -1354,6 +1435,116 @@ function renderPMH() {
       }</div></div>
     </div>
   </div>`;
+}
+
+// ═══════════════════════════════════════════
+// REVIEW OF SYSTEMS TAB
+// ═══════════════════════════════════════════
+const ROS_SYSTEMS = [
+  { key: 'constitutional', label: 'Constitutional', symptoms: ['Fever','Fatigue','Weight Loss','Weight Gain','Night Sweats','Chills'] },
+  { key: 'heent', label: 'HEENT', symptoms: ['Headache','Vision Changes','Hearing Loss','Tinnitus','Sore Throat','Nasal Congestion'] },
+  { key: 'cardiovascular', label: 'Cardiovascular', symptoms: ['Chest Pain','Palpitations','Edema','Orthopnea','Syncope'] },
+  { key: 'respiratory', label: 'Respiratory', symptoms: ['Cough','Shortness of Breath','Wheezing','Hemoptysis','Sputum Production'] },
+  { key: 'gi', label: 'Gastrointestinal', symptoms: ['Nausea','Vomiting','Abdominal Pain','Diarrhea','Constipation','Heartburn / GERD','Blood in Stool'] },
+  { key: 'gu', label: 'Genitourinary', symptoms: ['Dysuria','Urinary Frequency','Urgency','Hematuria','Discharge'] },
+  { key: 'msk', label: 'Musculoskeletal', symptoms: ['Joint Pain','Joint Swelling','Muscle Weakness','Back Pain','Muscle Cramps'] },
+  { key: 'neuro', label: 'Neurological', symptoms: ['Dizziness','Numbness / Tingling','Seizures','Memory Problems','Tremor'] },
+  { key: 'skin', label: 'Integumentary', symptoms: ['Rash','Itching','Skin Lesions','Hair Changes','Nail Changes'] },
+  { key: 'psych', label: 'Psychiatric', symptoms: ['Anxiety','Depression','Sleep Disturbance','Mood Changes'] },
+  { key: 'endo', label: 'Endocrine', symptoms: ['Heat Intolerance','Cold Intolerance','Polydipsia','Polyuria'] },
+  { key: 'heme', label: 'Hematologic / Lymphatic', symptoms: ['Easy Bruising','Prolonged Bleeding','Swollen Lymph Nodes','Pallor'] },
+];
+
+function renderROS() {
+  const p = currentPatient;
+  const rosData = p.ros || {};
+  const isEditing = false;
+
+  // Build toggle rows for each system
+  const editGrid = ROS_SYSTEMS.map(sys => {
+    const rows = sys.symptoms.map(sym => {
+      const val = (rosData[sys.key] || {})[sym] || 'No';
+      const nameKey = `${sys.key}_${sym}`;
+      return `<div class="ros-row">
+        <span class="ros-symptom-label">${sym}</span>
+        <div class="ros-toggle-group">
+          <label class="ros-toggle-btn"><input type="radio" name="${nameKey}" value="Yes" ${val==='Yes'?'checked':''}> Yes</label>
+          <label class="ros-toggle-btn"><input type="radio" name="${nameKey}" value="No" ${val!=='Yes'?'checked':''}> No</label>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="ros-system">
+      <div class="ros-system-title">${sys.label}</div>
+      <div class="ros-symptom-list">${rows}</div>
+    </div>`;
+  }).join('');
+
+  // Build view-mode summary
+  const hasData = Object.keys(rosData).length > 0;
+  const viewContent = !hasData
+    ? `<div class="empty-state"><div class="empty-icon">📋</div>No Review of Systems documented yet.</div>`
+    : `<div class="ros-view-grid">${ROS_SYSTEMS.map(sys => {
+        const sysData = rosData[sys.key] || {};
+        const positives = sys.symptoms.filter(s => sysData[s] === 'Yes');
+        const negatives = sys.symptoms.filter(s => sysData[s] === 'No');
+        if (!positives.length && !negatives.length) return '';
+        return `<div class="ros-view-system">
+          <div class="ros-view-system-title">${sys.label}</div>
+          ${positives.length ? `<div class="ros-view-row"><span class="ros-pos-label">Positive:</span><span class="ros-pos-val">${positives.join(', ')}</span></div>` : ''}
+          ${negatives.length ? `<div class="ros-view-row"><span class="ros-neg-label">Negative:</span><span class="ros-neg-val">${negatives.join(', ')}</span></div>` : ''}
+        </div>`;
+      }).filter(Boolean).join('')}</div>`;
+
+  document.getElementById('tab-ros').innerHTML = `
+  <div class="sc">
+    <div class="sc-head">
+      <h3>📋 Review of Systems</h3>
+      <button class="btn primary sm" onclick="toggleROSEdit()">✏ Edit</button>
+    </div>
+    <div class="sc-body">
+      <div id="ros-view-mode">${viewContent}</div>
+      <div id="ros-edit-mode" style="display:none;">
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Toggle each symptom Yes or No, then click Save.</p>
+        <div class="ros-grid">${editGrid}</div>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;gap:8px;">
+          <button class="btn" onclick="toggleROSEdit()">Cancel</button>
+          <button class="btn primary" onclick="saveROS()">💾 Save ROS</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleROSEdit() {
+  const edit = document.getElementById('ros-edit-mode');
+  const view = document.getElementById('ros-view-mode');
+  const isHidden = edit.style.display === 'none';
+  edit.style.display = isHidden ? 'block' : 'none';
+  view.style.display = isHidden ? 'none' : 'block';
+}
+
+async function saveROS() {
+  const rosData = {};
+  ROS_SYSTEMS.forEach(sys => {
+    rosData[sys.key] = {};
+    sys.symptoms.forEach(sym => {
+      const nameKey = `${sys.key}_${sym}`;
+      const checked = document.querySelector(`input[name="${CSS.escape(nameKey)}"]:checked`);
+      rosData[sys.key][sym] = checked ? checked.value : 'No';
+    });
+  });
+  try {
+    await db.collection('patients').doc(currentPatient.id).update({
+      ros: rosData,
+      rosUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    currentPatient.ros = rosData;
+    renderROS();
+    toast('Review of Systems saved.');
+  } catch(err) {
+    console.error('Error saving ROS:', err);
+    toast('Error saving ROS.');
+  }
 }
 
 // ═══════════════════════════════════════════
