@@ -353,6 +353,9 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <div class="auth-error" id="login-error"></div>
         <div class="field"><label>Email Address</label><input type="email" id="li-email" placeholder="you@school.edu" /></div>
         <div class="field"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••" /></div>
+        <div style="text-align:right;margin-top:-8px;margin-bottom:12px">
+          <span onclick="forgotPassword()" style="font-size:12px;color:var(--accent-hover);cursor:pointer;text-decoration:underline">Forgot password?</span>
+        </div>
         <button class="btn-auth" id="btn-login" onclick="doLogin()">Sign In →</button>
       </div>
       <div class="auth-form" id="form-register">
@@ -1030,6 +1033,25 @@ btn.textContent = 'Creating account...';
 await db.collection('users').doc(cred.user.uid).set({ displayName: first + ' ' + last, firstName: first, lastName: last, email, role: userRole, campusId: campusMatch.campusId, campusName: campusMatch.campusName, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     toast(`Welcome, ${first}! Account created successfully.`);
   } catch(e) { showAuthError('reg', friendlyAuthError(e.code)); btn.disabled = false; btn.textContent = 'Create Account →'; }
+}
+
+async function forgotPassword() {
+  const email = document.getElementById('li-email').value.trim();
+  if (!email) {
+    showAuthError('login', 'Enter your email address above, then click "Forgot password?".');
+    return;
+  }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    const el = document.getElementById('login-error');
+    el.style.display = 'block';
+    el.style.background = 'rgba(47,158,68,0.1)';
+    el.style.borderColor = 'rgba(47,158,68,0.3)';
+    el.style.color = 'var(--green)';
+    el.textContent = '✓ Password reset email sent — check your inbox.';
+  } catch(e) {
+    showAuthError('login', friendlyAuthError(e.code) || 'Could not send reset email. Please try again.');
+  }
 }
 
 function showAuthError(form, msg) {
