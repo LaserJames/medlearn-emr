@@ -248,6 +248,17 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .campus-card-code { font-family: var(--mono); font-size: 12px; color: var(--accent-hover); background: var(--accent-soft); padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px; }
 .campus-card-meta { font-size: 11px; color: var(--text2); margin-top: 6px; }
 .campus-card-actions { display: flex; gap: 6px; margin-top: 12px; }
+.campus-expiry { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.expiry-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.expiry-badge.good { background: var(--green-soft); color: var(--green); }
+.expiry-badge.warn { background: var(--yellow-soft); color: var(--yellow); }
+.expiry-badge.urgent { background: var(--red-soft); color: var(--red); }
+.expiry-badge.none { background: var(--surface3); color: var(--text3); }
+#renewal-banner { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px; font-size: 13px; font-weight: 500; flex-shrink: 0; z-index: 50; }
+#renewal-banner.warn { background: var(--yellow-soft); border-bottom: 1px solid rgba(230,119,0,0.25); color: var(--yellow); }
+#renewal-banner.urgent { background: var(--red-soft); border-bottom: 1px solid rgba(224,49,49,0.25); color: var(--red); }
+#renewal-banner-dismiss { background: none; border: none; cursor: pointer; font-size: 16px; color: inherit; opacity: 0.6; padding: 0 4px; line-height: 1; }
+#renewal-banner-dismiss:hover { opacity: 1; }
 .mf .hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
 
 /* ── Review of Systems ───────────────────────────────────── */
@@ -383,6 +394,10 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 </div>
 
 <div id="app">
+<div id="renewal-banner" role="alert">
+    <span id="renewal-banner-msg">⏰ Your MedLearn EMR license is expiring soon. Please contact your administrator to renew.</span>
+    <button id="renewal-banner-dismiss" onclick="document.getElementById('renewal-banner').style.display='none'" title="Dismiss">✕</button>
+  </div>
   <div class="topbar">
     <div class="topbar-logo"><img class="topbar-logo-icon" src="images/logoEMR.png" alt="MedLearn EMR" />MedLearn EMR</div>
     <div class="topbar-sep"></div>
@@ -567,6 +582,11 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       </div>
       <div class="mf"><label>City / Location</label><input type="text" id="campus-city" placeholder="e.g. Houston, TX" /></div>
       <div class="mf"><label>Notes (optional)</label><textarea id="campus-notes" placeholder="Contact person, contract details..."></textarea></div>
+      <div class="mf">
+        <label>Subscription Start Date</label>
+        <input type="date" id="campus-sub-start" />
+        <div class="hint">Set when the school's annual license begins. Used to calculate renewal date and show countdown timers.</div>
+      </div>
       <div class="mf"><label>Status</label>
         <select id="campus-status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
         <div class="hint">Inactive campuses cannot register new users.</div>
@@ -1081,6 +1101,9 @@ function showApp() {
   if (role === 'admin') {
     document.getElementById('nav-campuses').style.display = 'flex';
     seedCampusesIfNeeded();
+  } else {
+    // Check if this campus's subscription is expiring soon — show banner for non-admins
+    checkRenewalBanner();
   }
   subscribePatients();
 }
@@ -2353,6 +2376,29 @@ async function loadCampuses() {
   } catch(e) { document.getElementById('campus-grid').innerHTML = '<div style="color:var(--red);font-size:13px">Error loading campuses: ' + e.message + '</div>'; }
 }
 
+function getExpiryInfo(subscriptionStart) {
+  if (!subscriptionStart) return null;
+  const start = new Date(subscriptionStart + 'T00:00:00');
+  const expiry = new Date(start);
+  expiry.setFullYear(expiry.getFullYear() + 1);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysLeft = Math.round((expiry - today) / (1000 * 60 * 60 * 24));
+  return { expiry, daysLeft };
+}
+
+function expiryBadgeHTML(subscriptionStart) {
+  if (!subscriptionStart) return '<span class="expiry-badge none">📅 No subscription date set</span>';
+  const info = getExpiryInfo(subscriptionStart);
+  if (!info) return '';
+  const { expiry, daysLeft } = info;
+  const dateStr = expiry.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  if (daysLeft < 0) return `<span class="expiry-badge urgent">⛔ Expired ${Math.abs(daysLeft)}d ago (${dateStr})</span>`;
+  if (daysLeft <= 30) return `<span class="expiry-badge urgent">🔴 ${daysLeft}d left — Renew now! (${dateStr})</span>`;
+  if (daysLeft <= 60) return `<span class="expiry-badge warn">🟡 ${daysLeft}d left (${dateStr})</span>`;
+  return `<span class="expiry-badge good">🟢 ${daysLeft}d left (${dateStr})</span>`;
+}
+
 function renderCampusGrid() {
   const grid = document.getElementById('campus-grid');
   if (!allCampuses.length) {
@@ -2368,6 +2414,7 @@ function renderCampusGrid() {
         <span class="badge ${(c.status||'active') === 'active' ? 'green' : 'red'}">${c.status||'active'}</span>
         ${c.notes ? `<div style="margin-top:6px;color:var(--text3)">${c.notes}</div>` : ''}
       </div>
+      <div class="campus-expiry">${expiryBadgeHTML(c.subscriptionStart)}</div>
       <div class="campus-card-actions">
         <button class="btn warning sm" onclick="editCampus('${c.id}')">✏ Edit</button>
         <button class="btn sm" onclick="toggleCampusStatus('${c.id}','${c.status||'active'}')">${(c.status||'active') === 'active' ? 'Deactivate' : 'Activate'}</button>
@@ -2378,7 +2425,7 @@ function renderCampusGrid() {
 
 function openAddCampus() {
   document.getElementById('campus-edit-id').value = '';
-  ['campus-name','campus-code','campus-city','campus-notes'].forEach(id => document.getElementById(id).value = '');
+  ['campus-name','campus-code','campus-city','campus-notes','campus-sub-start'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('campus-status').value = 'active';
   openM('modal-campus');
 }
@@ -2391,6 +2438,7 @@ function editCampus(id) {
   document.getElementById('campus-code').value = c.code || '';
   document.getElementById('campus-city').value = c.city || '';
   document.getElementById('campus-notes').value = c.notes || '';
+  document.getElementById('campus-sub-start').value = c.subscriptionStart || '';
   document.getElementById('campus-status').value = c.status || 'active';
   openM('modal-campus');
 }
@@ -2401,6 +2449,7 @@ async function saveCampus() {
   const city = document.getElementById('campus-city').value.trim();
   const notes = document.getElementById('campus-notes').value.trim();
   const status = document.getElementById('campus-status').value;
+  const subscriptionStart = document.getElementById('campus-sub-start').value || '';
   const editId = document.getElementById('campus-edit-id').value;
   if (!name) { toast('Campus name is required', 'error'); return; }
   if (!code) { toast('Registration code is required', 'error'); return; }
@@ -2410,10 +2459,10 @@ async function saveCampus() {
   if (isDup) { toast('That registration code is already in use', 'error'); return; }
   try {
     if (editId) {
-      await db.collection('campuses').doc(editId).update({ name, code, city, notes, status });
+      await db.collection('campuses').doc(editId).update({ name, code, city, notes, status, subscriptionStart });
       toast('Campus updated');
     } else {
-      await db.collection('campuses').add({ name, code, city, notes, status, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await db.collection('campuses').add({ name, code, city, notes, status, subscriptionStart, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       toast(name + ' added — code: ' + code);
     }
     closeM('modal-campus');
@@ -2421,7 +2470,38 @@ async function saveCampus() {
   } catch(e) { toast('Error saving campus: ' + e.message, 'error'); }
 }
 
-async function toggleCampusStatus(id, currentStatus) {
+async function checkRenewalBanner() {
+  try {
+    const role = currentUserProfile?.role;
+    if (role !== 'instructor') return; // Only show to instructors, not students
+    const campusId = currentUserProfile?.campusId;
+    if (!campusId) return;
+    const doc = await db.collection('campuses').doc(campusId).get();
+    if (!doc.exists) return;
+    const { subscriptionStart, name } = doc.data();
+    if (!subscriptionStart) return;
+    const info = getExpiryInfo(subscriptionStart);
+    if (!info) return;
+    const { daysLeft } = info;
+    const banner = document.getElementById('renewal-banner');
+    const msg = document.getElementById('renewal-banner-msg');
+    if (daysLeft < 0) {
+      msg.textContent = `⛔ Your MedLearn EMR license for ${name || 'your campus'} has expired. Please notify your campus director or finance department to contact MedLearn EMR to renew.`;
+      banner.className = 'urgent';
+      banner.style.display = 'flex';
+    } else if (daysLeft <= 30) {
+      msg.textContent = `🔴 Your MedLearn EMR license for ${name || 'your campus'} expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Please notify your campus director or finance department to contact MedLearn EMR to renew.`;
+      banner.className = 'urgent';
+      banner.style.display = 'flex';
+    } else if (daysLeft <= 60) {
+      msg.textContent = `⏰ Your MedLearn EMR license for ${name || 'your campus'} expires in ${daysLeft} days. Please give your campus director or finance department a heads-up to contact MedLearn EMR to renew.`;
+      banner.className = 'warn';
+      banner.style.display = 'flex';
+    }
+  } catch(e) { console.warn('Could not check renewal status:', e); }
+}
+
+
   const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
   const campus = allCampuses.find(c => c.id === id);
   const msg = newStatus === 'inactive'
