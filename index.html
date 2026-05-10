@@ -2502,6 +2502,7 @@ async function checkRenewalBanner() {
 }
 
 
+async function toggleCampusStatus(id, currentStatus) {
   const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
   const campus = allCampuses.find(c => c.id === id);
   const msg = newStatus === 'inactive'
