@@ -196,6 +196,17 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .ekg-d label { color: var(--text3); font-size: 9px; text-transform: uppercase; display: block; margin-bottom: 2px; }
 .ekg-d span { color: var(--text); }
 .ekg-interp { margin-top: 10px; padding: 10px; background: var(--surface3); border-radius: 4px; font-size: 11px; color: var(--text2); font-family: var(--mono); line-height: 1.7; white-space: pre-wrap; border-left: 2px solid var(--accent); }
+.ekg-waveform-panel { display: none; margin-top: 14px; background: #0a1a0a; border-radius: 8px; overflow: hidden; border: 1px solid #1a3a1a; }
+.ekg-waveform-panel.open { display: block; }
+.ekg-waveform-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #0d200d; border-bottom: 1px solid #1a3a1a; }
+.ekg-waveform-title { font-size: 11px; font-weight: 600; color: #40c060; font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.ekg-waveform-rhythm { font-size: 11px; color: #7adb9a; font-family: var(--mono); }
+.ekg-live-canvas { width: 100%; height: 140px; display: block; cursor: default; }
+.ekg-waveform-footer { display: flex; gap: 20px; padding: 7px 14px; background: #0d200d; border-top: 1px solid #1a3a1a; }
+.ekg-stat { font-size: 10px; font-family: var(--mono); color: #7adb9a; }
+.ekg-stat span { color: #40c060; font-weight: 700; }
+.btn-waveform { background: #0d200d; border: 1px solid #2a5a2a; color: #40c060; font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-family: var(--mono); letter-spacing: 0.04em; transition: background 0.15s; }
+.btn-waveform:hover { background: #1a3a1a; }
 
 .note-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
 .note-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -1215,7 +1226,15 @@ document.getElementById('pt-search').addEventListener('keydown', e => { if(e.key
 // FIX: loadPatient — fetch directly from Firestore if not in local cache
 // This prevents the silent bail-out when allPatients is empty or stale
 // ═══════════════════════════════════════════
+function stopAllLiveWaveforms() {
+  Object.keys(_ekgAnimations).forEach(idx => {
+    if (_ekgAnimations[idx]) cancelAnimationFrame(_ekgAnimations[idx].raf);
+  });
+  Object.keys(_ekgAnimations).forEach(k => delete _ekgAnimations[k]);
+}
+
 async function loadPatient(id) {
+  stopAllLiveWaveforms();
   // Try local cache first
   let patient = allPatients.find(p => p.id === id);
 
@@ -1653,7 +1672,8 @@ function renderEKGs() {
         <canvas class="ekg-canvas" id="ekgc-${i}"></canvas>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px">
           <div><div style="font-size:14px;font-weight:600;color:var(--text)">${e.rhythm}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Axis: ${e.axis} · ST: ${e.st}</div></div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-waveform" onclick="toggleLiveWaveform(${i}, this)" data-running="false">▶ Live Waveform</button>
             <button class="btn warning sm" onclick="editEKG(${i})">✏ Edit</button>
             <button class="btn danger sm" onclick="deleteSubItem('ekgs',${i})">× Remove</button>
           </div>
@@ -1668,6 +1688,22 @@ function renderEKGs() {
           <div class="ekg-d"><label>Performed By</label><span>${e.performedBy||e.by||'—'}</span></div>
         </div>
         ${e.interpretation||e.interp?`<div class="ekg-interp">${e.interpretation||e.interp}</div>`:''}
+        <div class="ekg-waveform-panel" id="ekg-live-panel-${i}">
+          <div class="ekg-waveform-header">
+            <span class="ekg-waveform-title">⬤ LIVE MONITOR</span>
+            <span class="ekg-waveform-rhythm">${e.rhythm} · ${e.hr||72} bpm</span>
+          </div>
+          <canvas class="ekg-live-canvas" id="ekg-live-canvas-${i}"></canvas>
+          <div class="ekg-waveform-footer">
+            <div class="ekg-stat">HR <span>${e.hr||72}</span> bpm</div>
+            <div class="ekg-stat">PR <span>${e.pr||'—'}</span> ms</div>
+            <div class="ekg-stat">QRS <span>${e.qrs||'—'}</span> ms</div>
+            <div class="ekg-stat">QT <span>${e.qt||'—'}</span> ms</div>
+            <div class="ekg-stat">QTc <span>${e.qtc||'—'}</span> ms</div>
+            <div class="ekg-stat">Axis <span>${e.axis||'—'}</span></div>
+            <div class="ekg-stat">ST <span>${e.st||'None'}</span></div>
+          </div>
+        </div>
       </div>`;
     }).join('')
   }</div></div>`;
@@ -1703,6 +1739,286 @@ function drawEKG(id, hr, rhythm) {
     x+=bw;
   }
   ctx.stroke();
+}
+
+// ── LIVE WAVEFORM ENGINE ─────────────────────────────────────────────────────
+const _ekgAnimations = {}; // track running animation loops per record index
+
+function toggleLiveWaveform(idx, btn) {
+  const panel = document.getElementById('ekg-live-panel-' + idx);
+  const running = btn.dataset.running === 'true';
+  if (running) {
+    // Stop
+    if (_ekgAnimations[idx]) { cancelAnimationFrame(_ekgAnimations[idx].raf); delete _ekgAnimations[idx]; }
+    panel.classList.remove('open');
+    btn.dataset.running = 'false';
+    btn.textContent = '▶ Live Waveform';
+  } else {
+    // Start
+    panel.classList.add('open');
+    btn.dataset.running = 'true';
+    btn.textContent = '⏹ Stop Waveform';
+    const ekg = (currentPatient.ekgs || [])[idx];
+    if (ekg) setTimeout(() => startLiveWaveform(idx, ekg), 60);
+  }
+}
+
+function startLiveWaveform(idx, ekg) {
+  const canvas = document.getElementById('ekg-live-canvas-' + idx);
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.offsetWidth * dpr;
+  canvas.height = 140 * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = canvas.offsetWidth, H = 140, mid = H / 2;
+
+  const hr    = parseInt(ekg.hr)  || 72;
+  const pr    = parseInt(ekg.pr)  || 160;
+  const qrs   = parseInt(ekg.qrs) || 80;
+  const qt    = parseInt(ekg.qt)  || 400;
+  const rhythm = (ekg.rhythm || '').toLowerCase();
+  const st     = (ekg.st || '').toLowerCase();
+
+  // Rhythm classification
+  const isNSR      = rhythm.includes('normal sinus') || rhythm.includes('nsr');
+  const isTachy    = rhythm.includes('tachycardia') && !rhythm.includes('ventricular');
+  const isBrady    = rhythm.includes('bradycardia');
+  const isAfib     = rhythm.includes('atrial fib');
+  const isAflutter = rhythm.includes('flutter');
+  const isSVT      = rhythm.includes('svt');
+  const isVtach    = rhythm.includes('ventricular tach') || rhythm.includes('vtach');
+  const isVfib     = rhythm.includes('ventricular fib') || rhythm.includes('vfib');
+  const is1AVB     = rhythm.includes('1st degree');
+  const is2AVB     = rhythm.includes('2nd degree');
+  const is3AVB     = rhythm.includes('3rd degree') || rhythm.includes('complete');
+  const isLBBB     = rhythm.includes('lbbb');
+  const isRBBB     = rhythm.includes('rbbb');
+  const isPVC      = rhythm.includes('pvc');
+  const isPAC      = rhythm.includes('pac');
+  const isJxn      = rhythm.includes('junctional');
+  const isAsystole = rhythm.includes('asystole');
+
+  const stElev = st.includes('elevation') || st.includes('stemi');
+  const stDep  = st.includes('depression');
+
+  // Pixels per second at 25mm/s standard paper speed, scaled to canvas
+  const pxPerSec = W / 6; // show ~6 seconds of strip
+  const beatPx   = pxPerSec * (60 / hr); // pixels per beat
+
+  // Scrolling strip: draw into offscreen buffer, scroll left
+  const buf = document.createElement('canvas');
+  buf.width = W * dpr; buf.height = H * dpr;
+  const bctx = buf.getContext('2d');
+  bctx.scale(dpr, dpr);
+
+  let xHead = 0;       // where we are drawing next sample
+  let tSamp  = 0;      // time in seconds of xHead
+  let beatStart = 0;   // time of last beat start
+  let beatPhase = 0;   // 0-1 within current beat
+  let prevBeatPx = beatPx; // for AFib irregular RR
+  let pvcNext = false;
+  let pacNext = false;
+  let beatCount = 0;
+
+  function nextBeatPx() {
+    if (isAfib) {
+      // Irregularly irregular: RR varies ±30%
+      return beatPx * (0.7 + Math.random() * 0.6);
+    }
+    if (isPVC && beatCount % 3 === 2) return beatPx * 0.85; // compensatory
+    if (isPAC && beatCount % 4 === 3) return beatPx * 0.9;
+    if (is2AVB && beatCount % 3 === 2) return beatPx * 1.5; // dropped beat
+    return beatPx;
+  }
+
+  // Draw grid on buffer
+  function drawGrid() {
+    bctx.clearRect(0, 0, W, H);
+    bctx.strokeStyle = 'rgba(30,80,30,0.45)';
+    bctx.lineWidth = 0.5;
+    for (let gx = 0; gx < W; gx += 20) { bctx.beginPath(); bctx.moveTo(gx,0); bctx.lineTo(gx,H); bctx.stroke(); }
+    for (let gy = 0; gy < H; gy += 20) { bctx.beginPath(); bctx.moveTo(0,gy); bctx.lineTo(W,gy); bctx.stroke(); }
+    // Bold 5-square lines
+    bctx.strokeStyle = 'rgba(30,80,30,0.8)';
+    bctx.lineWidth = 1;
+    for (let gx = 0; gx < W; gx += 100) { bctx.beginPath(); bctx.moveTo(gx,0); bctx.lineTo(gx,H); bctx.stroke(); }
+    for (let gy = 0; gy < H; gy += 100) { bctx.beginPath(); bctx.moveTo(0,gy); bctx.lineTo(W,gy); bctx.stroke(); }
+  }
+
+  // Returns y offset for a given beat phase (0-1)
+  function waveformY(phase, thisBeatPx) {
+    if (isAsystole) return mid + (Math.random() < 0.005 ? (Math.random()-0.5)*3 : 0);
+    if (isVfib) return mid + (Math.sin(phase * Math.PI * 8 + Math.random()) * 28 * (0.6 + Math.random() * 0.8));
+
+    const currentHr = hr;
+    const prFrac  = Math.min(0.22, (pr / 1000) / (60 / currentHr));
+    const qrsFrac = Math.min(0.14, (qrs / 1000) / (60 / currentHr));
+    const qtFrac  = Math.min(0.45, (qt / 1000) / (60 / currentHr));
+
+    // P wave (skip in junctional, afib, vtach, 3AVB ventricular)
+    const pStart = 0.05, pEnd = pStart + prFrac * 0.6;
+    const pMid   = (pStart + pEnd) / 2;
+    const pAmp   = isJxn || isVtach || is3AVB ? 0 : isAfib ? 0 : isAflutter ? 0 : 5;
+
+    // QRS
+    const qStart = prFrac + 0.02;
+    const qEnd   = qStart + qrsFrac;
+    const rPeak  = qStart + qrsFrac * 0.35;
+    const rAmp   = isVtach ? 38 : isLBBB || isRBBB ? 30 : 30;
+    const sAmp   = isLBBB ? 16 : isRBBB ? 20 : 10;
+    const rPrime = isRBBB ? rPeak + qrsFrac * 0.55 : null; // RSR' for RBBB
+
+    // ST segment
+    const stStart = qEnd;
+    const stEnd   = stStart + 0.06;
+    const stOffset = stElev ? -8 : stDep ? 8 : 0;
+
+    // T wave
+    const tStart  = stEnd;
+    const tEnd    = tStart + (qtFrac - qrsFrac - 0.06);
+    const tMid    = (tStart + tEnd) / 2;
+    const tAmp    = isVtach ? -20 : stElev ? -14 : stDep ? 12 : 8;
+
+    // Flutter waves (sawtooth baseline)
+    if (isAflutter) {
+      const fw = phase % 0.25;
+      const fAmp = fw < 0.12 ? -10 * (fw / 0.12) : 10 * (1 - (fw - 0.12) / 0.13);
+      if (phase < qStart || phase > stEnd) return mid + fAmp;
+    }
+
+    // 3rd degree: independent P waves at atrial rate ~70bpm
+    if (is3AVB) {
+      const atrialPhase = (tSamp % (60 / 70)) / (60 / 70);
+      const ap = atrialPhase, apMid = 0.4;
+      const pWave = ap > 0.25 && ap < 0.55 ? -5 * Math.exp(-Math.pow((ap - apMid) * 12, 2)) : 0;
+      if (phase < qStart || phase > stEnd) return mid + pWave;
+    }
+
+    let y = mid;
+
+    // P wave (gaussian bump)
+    if (phase >= pStart && phase <= pEnd && pAmp) {
+      y += -pAmp * Math.exp(-Math.pow((phase - pMid) * 30, 2));
+    }
+
+    // QRS complex
+    if (phase >= qStart && phase <= qEnd) {
+      const t = (phase - qStart) / (qEnd - qStart);
+      if (isLBBB) {
+        // Broad notched R in lateral leads
+        y += -(rAmp * Math.sin(t * Math.PI) * (1 + 0.3 * Math.sin(t * Math.PI * 2)));
+      } else if (isRBBB) {
+        // RSR' pattern
+        if (t < 0.4)       y += -(rAmp * 0.6 * Math.sin(t / 0.4 * Math.PI));
+        else if (t < 0.6)  y += sAmp * ((t - 0.4) / 0.2);
+        else               y += -(rAmp * Math.sin((t - 0.6) / 0.4 * Math.PI));
+      } else {
+        // Standard: Q dip, R peak, S dip
+        if (t < 0.15)       y += 4 * (t / 0.15);          // Q
+        else if (t < 0.45)  y += -rAmp * Math.sin((t - 0.15) / 0.30 * Math.PI); // R
+        else                y += sAmp * Math.sin((t - 0.45) / 0.55 * Math.PI);  // S
+      }
+    }
+
+    // ST segment
+    if (phase >= stStart && phase <= stEnd) {
+      y += stOffset;
+    }
+
+    // T wave (gaussian)
+    if (phase >= tStart && phase <= tEnd) {
+      y += tAmp * Math.exp(-Math.pow((phase - tMid) * 10, 2));
+    }
+
+    // Slight baseline wander
+    y += Math.sin(tSamp * 0.3) * 1.2;
+
+    return y;
+  }
+
+  let lastTime = null;
+  const scrollSpeed = pxPerSec; // px/sec
+
+  function frame(ts) {
+    if (!lastTime) lastTime = ts;
+    const dt = Math.min((ts - lastTime) / 1000, 0.05);
+    lastTime = ts;
+
+    const dxRaw  = scrollSpeed * dt;
+    const dx     = Math.ceil(dxRaw);
+    tSamp += dt;
+
+    // Scroll buffer left by dx
+    const imgData = bctx.getImageData(dx * dpr, 0, (W - dx) * dpr, H * dpr);
+    bctx.clearRect(0, 0, W, H);
+    bctx.putImageData(imgData, 0, 0);
+    drawGridSliver(W - dx, dx);
+
+    // Compute beat phase for new samples
+    const currentBeatPx = prevBeatPx;
+    const samplesPerPx  = 1 / dpr;
+
+    bctx.strokeStyle = '#40e070';
+    bctx.lineWidth   = 1.8;
+    bctx.beginPath();
+
+    for (let px = 0; px < dx; px++) {
+      const x   = W - dx + px;
+      const frac = px / dx;
+      const beatT = (tSamp - dt) + frac * dt;
+      const beatPos = (beatT - beatStart);
+      beatPhase = beatPos / (currentBeatPx / scrollSpeed);
+
+      if (beatPhase >= 1) {
+        beatStart += currentBeatPx / scrollSpeed;
+        beatPhase -= 1;
+        beatCount++;
+        prevBeatPx = nextBeatPx();
+      }
+
+      const yVal = waveformY(Math.max(0, Math.min(0.999, beatPhase)), currentBeatPx);
+      if (px === 0) bctx.moveTo(x, yVal);
+      else bctx.lineTo(x, yVal);
+    }
+    bctx.stroke();
+
+    // Compose: clear main canvas, draw buffer
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(buf, 0, 0, W * dpr, H * dpr, 0, 0, W, H);
+
+    // Sweep line
+    ctx.strokeStyle = 'rgba(100,255,140,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(W - 2, 0); ctx.lineTo(W - 2, H); ctx.stroke();
+
+    _ekgAnimations[idx].raf = requestAnimationFrame(frame);
+  }
+
+  function drawGridSliver(x, w) {
+    bctx.strokeStyle = 'rgba(30,80,30,0.45)';
+    bctx.lineWidth = 0.5;
+    for (let gx = x; gx < x + w + 20; gx += 20) {
+      const gxR = Math.round(gx / 20) * 20;
+      if (gxR >= x && gxR < x + w) {
+        bctx.beginPath(); bctx.moveTo(gxR, 0); bctx.lineTo(gxR, H); bctx.stroke();
+      }
+    }
+    for (let gy = 0; gy < H; gy += 20) {
+      bctx.beginPath(); bctx.moveTo(x, gy); bctx.lineTo(x + w, gy); bctx.stroke();
+    }
+    bctx.strokeStyle = 'rgba(30,80,30,0.8)';
+    bctx.lineWidth = 1;
+    for (let gx = x; gx < x + w + 100; gx += 100) {
+      const gxR = Math.round(gx / 100) * 100;
+      if (gxR >= x && gxR < x + w) {
+        bctx.beginPath(); bctx.moveTo(gxR, 0); bctx.lineTo(gxR, H); bctx.stroke();
+      }
+    }
+  }
+
+  drawGrid();
+  _ekgAnimations[idx] = { raf: requestAnimationFrame(frame) };
 }
 
 // ═══════════════════════════════════════════
