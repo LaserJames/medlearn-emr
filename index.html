@@ -1773,22 +1773,18 @@ function startLiveWaveform(idx, ekg) {
   ctx.scale(dpr, dpr);
   const W = canvas.offsetWidth, H = 140, mid = H / 2;
 
-  const hr    = parseInt(ekg.hr)  || 72;
-  const pr    = parseInt(ekg.pr)  || 160;
-  const qrs   = parseInt(ekg.qrs) || 80;
-  const qt    = parseInt(ekg.qt)  || 400;
+  const hr     = Math.max(20, Math.min(300, parseInt(ekg.hr)  || 72));
   const rhythm = (ekg.rhythm || '').toLowerCase();
-  const st     = (ekg.st || '').toLowerCase();
+  const st     = (ekg.st    || '').toLowerCase();
+  const stElev = st.includes('elevation') || st.includes('stemi');
+  const stDep  = st.includes('depression');
 
-  // Rhythm classification
-  const isNSR      = rhythm.includes('normal sinus') || rhythm.includes('nsr');
-  const isTachy    = rhythm.includes('tachycardia') && !rhythm.includes('ventricular');
-  const isBrady    = rhythm.includes('bradycardia');
+  // ── Classify rhythm ──────────────────────────────────────────────
   const isAfib     = rhythm.includes('atrial fib');
   const isAflutter = rhythm.includes('flutter');
   const isSVT      = rhythm.includes('svt');
   const isVtach    = rhythm.includes('ventricular tach') || rhythm.includes('vtach');
-  const isVfib     = rhythm.includes('ventricular fib') || rhythm.includes('vfib');
+  const isVfib     = rhythm.includes('ventricular fib')  || rhythm.includes('vfib');
   const is1AVB     = rhythm.includes('1st degree');
   const is2AVB     = rhythm.includes('2nd degree');
   const is3AVB     = rhythm.includes('3rd degree') || rhythm.includes('complete');
@@ -1798,223 +1794,335 @@ function startLiveWaveform(idx, ekg) {
   const isPAC      = rhythm.includes('pac');
   const isJxn      = rhythm.includes('junctional');
   const isAsystole = rhythm.includes('asystole');
+  const isTachy    = rhythm.includes('tachycardia') && !rhythm.includes('ventricular');
+  const isBrady    = rhythm.includes('bradycardia');
 
-  const stElev = st.includes('elevation') || st.includes('stemi');
-  const stDep  = st.includes('depression');
+  // px/sec — standard 25 mm/s paper speed feel
+  const pxPerSec  = W / 6;
+  const beatSec   = 60 / hr;
+  const beatPx    = pxPerSec * beatSec;
 
-  // Pixels per second at 25mm/s standard paper speed, scaled to canvas
-  const pxPerSec = W / 6; // show ~6 seconds of strip
-  const beatPx   = pxPerSec * (60 / hr); // pixels per beat
+  // ── Per-rhythm waveform shape functions ──────────────────────────
+  // Each returns a y value (canvas coords) given phase 0-1 and extra state
+  // Gaussian helper
+  const gauss = (x, mu, sig, amp) => amp * Math.exp(-Math.pow((x - mu) / sig, 2) / 2);
 
-  // Scrolling strip: draw into offscreen buffer, scroll left
+  // Normal beat building block: P, QRS, T — parameterised
+  function normalBeat(ph, opts = {}) {
+    const {
+      pAmp = 6, pMu = 0.12, pSig = 0.03,           // P wave
+      prEnd = 0.22,                                   // end of PR segment
+      qAmp = 4, qMu = 0.235, qSig = 0.012,           // Q dip
+      rAmp = 32, rMu = 0.26, rSig = 0.018,           // R peak (up = negative y)
+      sAmp = 10, sMu = 0.29, sSig = 0.014,           // S dip
+      stLevel = 0,                                    // ST offset
+      tAmp = 9, tMu = 0.55, tSig = 0.07,             // T wave
+      tInvert = false,
+    } = opts;
+    let y = 0;
+    // P wave
+    if (ph > 0.04 && ph < 0.22) y -= gauss(ph, pMu, pSig, pAmp);
+    // Q
+    if (ph > prEnd && ph < prEnd + 0.04) y += gauss(ph, qMu, qSig, qAmp);
+    // R
+    if (ph > prEnd && ph < prEnd + 0.12) y -= gauss(ph, rMu, rSig, rAmp);
+    // S
+    if (ph > prEnd + 0.03 && ph < prEnd + 0.12) y += gauss(ph, sMu, sSig, sAmp);
+    // ST
+    if (ph > prEnd + 0.08 && ph < tMu - tSig * 1.5) y += stLevel;
+    // T wave
+    if (ph > prEnd + 0.08) y -= gauss(ph, tMu, tSig, tInvert ? -tAmp : tAmp);
+    return mid + y;
+  }
+
+  // ── Waveform functions per rhythm (return canvas y) ──────────────
+  function yNSR(ph) {
+    return normalBeat(ph, { stLevel: stElev ? -10 : stDep ? 10 : 0, tAmp: stElev ? 14 : 9, tInvert: stDep });
+  }
+
+  function yTachy(ph) { // Fast — same shape, just faster rate handled by beatPx
+    return normalBeat(ph, { pAmp: 5, rAmp: 30, tAmp: 8, pMu: 0.10, tMu: 0.50, tSig: 0.06 });
+  }
+
+  function yBrady(ph) { // Slow — prominent P, wider T
+    return normalBeat(ph, { pAmp: 8, rAmp: 32, tAmp: 10, tMu: 0.58, tSig: 0.09 });
+  }
+
+  function yJunctional(ph) { // No P wave, narrow QRS, retrograde or absent P
+    return normalBeat(ph, { pAmp: 0, rAmp: 28, tAmp: 8, tMu: 0.50 });
+  }
+
+  let afibNoise = 0;
+  function yAfib(ph, beatIndex) {
+    // No P waves — chaotic fibrillatory baseline instead
+    afibNoise += 0.35;
+    const fibBaseline = Math.sin(afibNoise * 7.1) * 2.2 + Math.sin(afibNoise * 13.3) * 1.4;
+    let y = mid + fibBaseline;
+    // QRS only (no P, no clear T)
+    if (ph > 0.22 && ph < 0.38) y -= gauss(ph, 0.27, 0.016, 30);
+    if (ph > 0.25 && ph < 0.38) y += gauss(ph, 0.30, 0.013, 9);
+    if (ph > 0.32 && ph < 0.55) y -= gauss(ph, 0.44, 0.06, 7);
+    return y;
+  }
+
+  let flutterPhase = 0;
+  function yAflutter(ph) {
+    flutterPhase += 0.018;
+    // Sawtooth flutter waves at ~300bpm (4:1 or 3:1 block)
+    const fRate = 300 / hr; // flutter waves per QRS
+    const fph = (ph * fRate) % 1;
+    const saw = fph < 0.6 ? -8 * (fph / 0.6) : 8 * (1 - (fph - 0.6) / 0.4);
+    let y = mid + saw;
+    // QRS superimposed
+    if (ph > 0.22 && ph < 0.36) y -= gauss(ph, 0.27, 0.016, 32);
+    if (ph > 0.27 && ph < 0.38) y += gauss(ph, 0.32, 0.013, 9);
+    if (ph > 0.34 && ph < 0.55) y -= gauss(ph, 0.46, 0.06, 7);
+    return y;
+  }
+
+  function ySVT(ph) { // Very fast narrow complex, P buried in T
+    return normalBeat(ph, {
+      pAmp: 0,        // P buried or absent
+      rAmp: 28, rMu: 0.24, rSig: 0.014,
+      sAmp: 8,  sMu: 0.265, sSig: 0.012,
+      tAmp: 7,  tMu: 0.46, tSig: 0.055,
+      prEnd: 0.20,
+    });
+  }
+
+  function yVtach(ph) { // Wide bizarre QRS, no P, T opposite QRS
+    let y = mid;
+    // No P wave
+    // Broad monophasic R (wide positive deflection)
+    if (ph > 0.15 && ph < 0.55) y -= gauss(ph, 0.28, 0.055, 36);
+    // Notch in QRS
+    if (ph > 0.30 && ph < 0.48) y += gauss(ph, 0.38, 0.025, 14);
+    // Inverted T wave (opposite to QRS)
+    if (ph > 0.50 && ph < 0.85) y += gauss(ph, 0.66, 0.08, 14);
+    return y;
+  }
+
+  let vfibNoise = 0;
+  function yVfib(ph) { // Chaotic, no organised complexes
+    vfibNoise += 0.28;
+    const amp = 22 + Math.sin(vfibNoise * 0.4) * 10;
+    return mid + Math.sin(vfibNoise * 5.3) * amp * 0.6
+               + Math.sin(vfibNoise * 8.7 + 1.2) * amp * 0.5
+               + Math.sin(vfibNoise * 13.1 + 2.5) * amp * 0.3
+               + (Math.random() - 0.5) * 8;
+  }
+
+  function y1AVB(ph) { // Prolonged PR — P clearly separated from QRS
+    return normalBeat(ph, {
+      pMu: 0.09, pSig: 0.03, pAmp: 7,
+      prEnd: 0.30, // long PR
+      qMu: 0.315, rMu: 0.34, sMu: 0.37,
+      tMu: 0.65, tSig: 0.08,
+    });
+  }
+
+  let avb2BeatCount = 0;
+  function y2AVB(ph, beatIndex) { // Occasional dropped beat (Mobitz II style)
+    const dropped = (beatIndex % 4 === 3); // every 4th P is blocked
+    let y = mid;
+    // P wave always present
+    if (ph > 0.04 && ph < 0.22) y -= gauss(ph, 0.12, 0.03, 7);
+    if (!dropped) {
+      // QRS follows
+      if (ph > 0.22 && ph < 0.40) y += gauss(ph, 0.235, 0.012, 4);
+      if (ph > 0.22 && ph < 0.40) y -= gauss(ph, 0.26, 0.018, 32);
+      if (ph > 0.26 && ph < 0.40) y += gauss(ph, 0.29, 0.013, 9);
+      if (ph > 0.34 && ph < 0.75) y -= gauss(ph, 0.55, 0.07, 9);
+    }
+    return y;
+  }
+
+  // 3rd degree: ventricles at escape rate ~40bpm, atria at 75bpm independently
+  let avb3AtrialT = 0;
+  function y3AVB(ph, tSamp) {
+    let y = mid;
+    // Ventricular escape: wide QRS at documented rate (usually slow)
+    if (ph > 0.20 && ph < 0.65) y -= gauss(ph, 0.32, 0.055, 34);
+    if (ph > 0.32 && ph < 0.65) y += gauss(ph, 0.42, 0.035, 12);
+    if (ph > 0.48 && ph < 0.85) y += gauss(ph, 0.64, 0.07, 12); // inverted T (escape)
+    // Independent P waves at atrial rate 75bpm
+    const atrialCycle = 60 / 75;
+    const aPh = (tSamp % atrialCycle) / atrialCycle;
+    if (aPh > 0.10 && aPh < 0.40) y -= gauss(aPh, 0.25, 0.04, 6);
+    return y;
+  }
+
+  function yLBBB(ph) { // Broad notched R, no septal Q in I/aVL
+    let y = mid;
+    // No Q wave
+    // Broad slurred R with notch (M-shaped)
+    if (ph > 0.20 && ph < 0.60) {
+      const t = (ph - 0.20) / 0.40;
+      y -= Math.sin(t * Math.PI) * 34;
+      // Notch at peak
+      if (t > 0.35 && t < 0.65) y += Math.sin((t - 0.35) / 0.30 * Math.PI) * 10;
+    }
+    // Discordant ST depression and T inversion (opposite to QRS)
+    if (ph > 0.58 && ph < 0.88) y += gauss(ph, 0.72, 0.08, 12);
+    return y;
+  }
+
+  function yRBBB(ph) { // RSR' (rabbit ears) in V1, wide S in V6
+    let y = mid;
+    // Small initial R
+    if (ph > 0.20 && ph < 0.34) y -= gauss(ph, 0.255, 0.018, 18);
+    // S wave (goes down)
+    if (ph > 0.28 && ph < 0.42) y += gauss(ph, 0.33, 0.022, 16);
+    // R' (second upward deflection — the "rabbit ear")
+    if (ph > 0.34 && ph < 0.55) y -= gauss(ph, 0.44, 0.025, 26);
+    // Discordant T inversion
+    if (ph > 0.52 && ph < 0.82) y += gauss(ph, 0.65, 0.075, 10);
+    return y;
+  }
+
+  // PVC: normal beat but every 3rd is a wide bizarre PVC with compensatory pause
+  let pvcBeatCount = 0;
+  function yPVC(ph, beatIndex) {
+    const isPVCBeat = (beatIndex % 3 === 2);
+    if (!isPVCBeat) {
+      return normalBeat(ph, { pAmp: 6, rAmp: 30, tAmp: 8 });
+    }
+    // PVC: wide, bizarre, no P, T opposite
+    let y = mid;
+    if (ph > 0.10 && ph < 0.55) y -= gauss(ph, 0.26, 0.06, 38);
+    if (ph > 0.30 && ph < 0.55) y += gauss(ph, 0.42, 0.04, 16);
+    if (ph > 0.50 && ph < 0.88) y += gauss(ph, 0.68, 0.09, 15);
+    return y;
+  }
+
+  // PAC: every 4th beat is early with slightly different P morphology
+  function yPAC(ph, beatIndex) {
+    const isPACBeat = (beatIndex % 4 === 3);
+    if (!isPACBeat) {
+      return normalBeat(ph, { pAmp: 6, rAmp: 30, tAmp: 8 });
+    }
+    // PAC: different P morphology, slightly narrow QRS
+    return normalBeat(ph, { pAmp: 9, pMu: 0.10, pSig: 0.025, rAmp: 28, tAmp: 7, prEnd: 0.20 });
+  }
+
+  function yAsystole() {
+    return mid + (Math.random() < 0.004 ? (Math.random() - 0.5) * 4 : 0);
+  }
+
+  // ── RR interval per rhythm ────────────────────────────────────────
+  function getRRpx(beatIndex) {
+    if (isAfib)  return beatPx * (0.65 + Math.random() * 0.70); // irregularly irregular
+    if (isPVC  && beatIndex % 3 === 1) return beatPx * 0.72;    // early PVC
+    if (isPVC  && beatIndex % 3 === 2) return beatPx * 1.28;    // compensatory pause
+    if (isPAC  && beatIndex % 4 === 2) return beatPx * 0.80;    // early PAC
+    if (is2AVB && beatIndex % 4 === 3) return beatPx * 1.80;    // dropped beat pause
+    return beatPx;
+  }
+
+  // ── Master waveform dispatcher ────────────────────────────────────
+  function getY(ph, beatIndex, tSamp) {
+    if (isAsystole) return yAsystole();
+    if (isVfib)     return yVfib(ph);
+    if (isVtach)    return yVtach(ph);
+    if (isAfib)     return yAfib(ph, beatIndex);
+    if (isAflutter) return yAflutter(ph);
+    if (isSVT)      return ySVT(ph);
+    if (isLBBB)     return yLBBB(ph);
+    if (isRBBB)     return yRBBB(ph);
+    if (is1AVB)     return y1AVB(ph);
+    if (is2AVB)     return y2AVB(ph, beatIndex);
+    if (is3AVB)     return y3AVB(ph, tSamp);
+    if (isPVC)      return yPVC(ph, beatIndex);
+    if (isPAC)      return yPAC(ph, beatIndex);
+    if (isJxn)      return yJunctional(ph);
+    if (isTachy || isBrady) return yNSR(ph); // same shape, rate differs
+    return yNSR(ph);
+  }
+
+  // ── Offscreen buffer for scrolling strip ─────────────────────────
   const buf = document.createElement('canvas');
   buf.width = W * dpr; buf.height = H * dpr;
   const bctx = buf.getContext('2d');
   bctx.scale(dpr, dpr);
 
-  let xHead = 0;       // where we are drawing next sample
-  let tSamp  = 0;      // time in seconds of xHead
-  let beatStart = 0;   // time of last beat start
-  let beatPhase = 0;   // 0-1 within current beat
-  let prevBeatPx = beatPx; // for AFib irregular RR
-  let pvcNext = false;
-  let pacNext = false;
-  let beatCount = 0;
+  let tSamp     = 0;
+  let beatStart = 0;
+  let beatIndex = 0;
+  let currentRR = getRRpx(0);
+  let lastTime  = null;
 
-  function nextBeatPx() {
-    if (isAfib) {
-      // Irregularly irregular: RR varies ±30%
-      return beatPx * (0.7 + Math.random() * 0.6);
-    }
-    if (isPVC && beatCount % 3 === 2) return beatPx * 0.85; // compensatory
-    if (isPAC && beatCount % 4 === 3) return beatPx * 0.9;
-    if (is2AVB && beatCount % 3 === 2) return beatPx * 1.5; // dropped beat
-    return beatPx;
-  }
-
-  // Draw grid on buffer
   function drawGrid() {
     bctx.clearRect(0, 0, W, H);
-    bctx.strokeStyle = 'rgba(30,80,30,0.45)';
-    bctx.lineWidth = 0.5;
+    bctx.strokeStyle = 'rgba(30,80,30,0.40)'; bctx.lineWidth = 0.5;
     for (let gx = 0; gx < W; gx += 20) { bctx.beginPath(); bctx.moveTo(gx,0); bctx.lineTo(gx,H); bctx.stroke(); }
     for (let gy = 0; gy < H; gy += 20) { bctx.beginPath(); bctx.moveTo(0,gy); bctx.lineTo(W,gy); bctx.stroke(); }
-    // Bold 5-square lines
-    bctx.strokeStyle = 'rgba(30,80,30,0.8)';
-    bctx.lineWidth = 1;
+    bctx.strokeStyle = 'rgba(30,80,30,0.75)'; bctx.lineWidth = 1;
     for (let gx = 0; gx < W; gx += 100) { bctx.beginPath(); bctx.moveTo(gx,0); bctx.lineTo(gx,H); bctx.stroke(); }
     for (let gy = 0; gy < H; gy += 100) { bctx.beginPath(); bctx.moveTo(0,gy); bctx.lineTo(W,gy); bctx.stroke(); }
   }
 
-  // Returns y offset for a given beat phase (0-1)
-  function waveformY(phase, thisBeatPx) {
-    if (isAsystole) return mid + (Math.random() < 0.005 ? (Math.random()-0.5)*3 : 0);
-    if (isVfib) return mid + (Math.sin(phase * Math.PI * 8 + Math.random()) * 28 * (0.6 + Math.random() * 0.8));
-
-    const currentHr = hr;
-    const prFrac  = Math.min(0.22, (pr / 1000) / (60 / currentHr));
-    const qrsFrac = Math.min(0.14, (qrs / 1000) / (60 / currentHr));
-    const qtFrac  = Math.min(0.45, (qt / 1000) / (60 / currentHr));
-
-    // P wave (skip in junctional, afib, vtach, 3AVB ventricular)
-    const pStart = 0.05, pEnd = pStart + prFrac * 0.6;
-    const pMid   = (pStart + pEnd) / 2;
-    const pAmp   = isJxn || isVtach || is3AVB ? 0 : isAfib ? 0 : isAflutter ? 0 : 5;
-
-    // QRS
-    const qStart = prFrac + 0.02;
-    const qEnd   = qStart + qrsFrac;
-    const rPeak  = qStart + qrsFrac * 0.35;
-    const rAmp   = isVtach ? 38 : isLBBB || isRBBB ? 30 : 30;
-    const sAmp   = isLBBB ? 16 : isRBBB ? 20 : 10;
-    const rPrime = isRBBB ? rPeak + qrsFrac * 0.55 : null; // RSR' for RBBB
-
-    // ST segment
-    const stStart = qEnd;
-    const stEnd   = stStart + 0.06;
-    const stOffset = stElev ? -8 : stDep ? 8 : 0;
-
-    // T wave
-    const tStart  = stEnd;
-    const tEnd    = tStart + (qtFrac - qrsFrac - 0.06);
-    const tMid    = (tStart + tEnd) / 2;
-    const tAmp    = isVtach ? -20 : stElev ? -14 : stDep ? 12 : 8;
-
-    // Flutter waves (sawtooth baseline)
-    if (isAflutter) {
-      const fw = phase % 0.25;
-      const fAmp = fw < 0.12 ? -10 * (fw / 0.12) : 10 * (1 - (fw - 0.12) / 0.13);
-      if (phase < qStart || phase > stEnd) return mid + fAmp;
+  function drawGridSliver(x, w) {
+    bctx.strokeStyle = 'rgba(30,80,30,0.40)'; bctx.lineWidth = 0.5;
+    for (let gx = Math.ceil(x/20)*20; gx < x+w+1; gx += 20) {
+      bctx.beginPath(); bctx.moveTo(gx,0); bctx.lineTo(gx,H); bctx.stroke();
     }
-
-    // 3rd degree: independent P waves at atrial rate ~70bpm
-    if (is3AVB) {
-      const atrialPhase = (tSamp % (60 / 70)) / (60 / 70);
-      const ap = atrialPhase, apMid = 0.4;
-      const pWave = ap > 0.25 && ap < 0.55 ? -5 * Math.exp(-Math.pow((ap - apMid) * 12, 2)) : 0;
-      if (phase < qStart || phase > stEnd) return mid + pWave;
+    for (let gy = 0; gy < H; gy += 20) {
+      bctx.beginPath(); bctx.moveTo(x,gy); bctx.lineTo(x+w,gy); bctx.stroke();
     }
-
-    let y = mid;
-
-    // P wave (gaussian bump)
-    if (phase >= pStart && phase <= pEnd && pAmp) {
-      y += -pAmp * Math.exp(-Math.pow((phase - pMid) * 30, 2));
+    bctx.strokeStyle = 'rgba(30,80,30,0.75)'; bctx.lineWidth = 1;
+    for (let gx = Math.ceil(x/100)*100; gx < x+w+1; gx += 100) {
+      bctx.beginPath(); bctx.moveTo(gx,0); bctx.lineTo(gx,H); bctx.stroke();
     }
-
-    // QRS complex
-    if (phase >= qStart && phase <= qEnd) {
-      const t = (phase - qStart) / (qEnd - qStart);
-      if (isLBBB) {
-        // Broad notched R in lateral leads
-        y += -(rAmp * Math.sin(t * Math.PI) * (1 + 0.3 * Math.sin(t * Math.PI * 2)));
-      } else if (isRBBB) {
-        // RSR' pattern
-        if (t < 0.4)       y += -(rAmp * 0.6 * Math.sin(t / 0.4 * Math.PI));
-        else if (t < 0.6)  y += sAmp * ((t - 0.4) / 0.2);
-        else               y += -(rAmp * Math.sin((t - 0.6) / 0.4 * Math.PI));
-      } else {
-        // Standard: Q dip, R peak, S dip
-        if (t < 0.15)       y += 4 * (t / 0.15);          // Q
-        else if (t < 0.45)  y += -rAmp * Math.sin((t - 0.15) / 0.30 * Math.PI); // R
-        else                y += sAmp * Math.sin((t - 0.45) / 0.55 * Math.PI);  // S
-      }
-    }
-
-    // ST segment
-    if (phase >= stStart && phase <= stEnd) {
-      y += stOffset;
-    }
-
-    // T wave (gaussian)
-    if (phase >= tStart && phase <= tEnd) {
-      y += tAmp * Math.exp(-Math.pow((phase - tMid) * 10, 2));
-    }
-
-    // Slight baseline wander
-    y += Math.sin(tSamp * 0.3) * 1.2;
-
-    return y;
   }
-
-  let lastTime = null;
-  const scrollSpeed = pxPerSec; // px/sec
 
   function frame(ts) {
     if (!lastTime) lastTime = ts;
-    const dt = Math.min((ts - lastTime) / 1000, 0.05);
-    lastTime = ts;
+    const dt  = Math.min((ts - lastTime) / 1000, 0.05);
+    lastTime  = ts;
+    tSamp    += dt;
 
-    const dxRaw  = scrollSpeed * dt;
-    const dx     = Math.ceil(dxRaw);
-    tSamp += dt;
+    const dx = Math.max(1, Math.ceil(pxPerSec * dt));
 
-    // Scroll buffer left by dx
+    // Scroll buffer left
     const imgData = bctx.getImageData(dx * dpr, 0, (W - dx) * dpr, H * dpr);
     bctx.clearRect(0, 0, W, H);
     bctx.putImageData(imgData, 0, 0);
     drawGridSliver(W - dx, dx);
 
-    // Compute beat phase for new samples
-    const currentBeatPx = prevBeatPx;
-    const samplesPerPx  = 1 / dpr;
-
-    bctx.strokeStyle = '#40e070';
-    bctx.lineWidth   = 1.8;
-    bctx.beginPath();
-
+    // Draw new samples on right edge
+    bctx.strokeStyle = '#3de870'; bctx.lineWidth = 2; bctx.beginPath();
     for (let px = 0; px < dx; px++) {
-      const x   = W - dx + px;
-      const frac = px / dx;
-      const beatT = (tSamp - dt) + frac * dt;
-      const beatPos = (beatT - beatStart);
-      beatPhase = beatPos / (currentBeatPx / scrollSpeed);
+      const t   = tSamp - dt + (px / dx) * dt;
+      const elapsed = t - beatStart;
+      const rrSec   = currentRR / pxPerSec;
+      let ph = elapsed / rrSec;
 
-      if (beatPhase >= 1) {
-        beatStart += currentBeatPx / scrollSpeed;
-        beatPhase -= 1;
-        beatCount++;
-        prevBeatPx = nextBeatPx();
+      if (ph >= 1) {
+        beatStart  += rrSec;
+        beatIndex++;
+        currentRR = getRRpx(beatIndex);
+        ph = (t - beatStart) / (currentRR / pxPerSec);
+        ph = Math.max(0, ph);
       }
+      ph = Math.min(0.999, ph);
 
-      const yVal = waveformY(Math.max(0, Math.min(0.999, beatPhase)), currentBeatPx);
-      if (px === 0) bctx.moveTo(x, yVal);
-      else bctx.lineTo(x, yVal);
+      // Baseline wander (slow, subtle)
+      const wander = Math.sin(t * 0.18) * 1.5;
+      const yVal = getY(ph, beatIndex, t) + wander;
+      if (px === 0) bctx.moveTo(W - dx + px, yVal);
+      else          bctx.lineTo(W - dx + px, yVal);
     }
     bctx.stroke();
 
-    // Compose: clear main canvas, draw buffer
+    // Blit buffer to display canvas
     ctx.clearRect(0, 0, W, H);
     ctx.drawImage(buf, 0, 0, W * dpr, H * dpr, 0, 0, W, H);
 
-    // Sweep line
-    ctx.strokeStyle = 'rgba(100,255,140,0.5)';
-    ctx.lineWidth = 1.5;
+    // Sweep cursor line
+    ctx.strokeStyle = 'rgba(120,255,160,0.45)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(W - 2, 0); ctx.lineTo(W - 2, H); ctx.stroke();
 
     _ekgAnimations[idx].raf = requestAnimationFrame(frame);
-  }
-
-  function drawGridSliver(x, w) {
-    bctx.strokeStyle = 'rgba(30,80,30,0.45)';
-    bctx.lineWidth = 0.5;
-    for (let gx = x; gx < x + w + 20; gx += 20) {
-      const gxR = Math.round(gx / 20) * 20;
-      if (gxR >= x && gxR < x + w) {
-        bctx.beginPath(); bctx.moveTo(gxR, 0); bctx.lineTo(gxR, H); bctx.stroke();
-      }
-    }
-    for (let gy = 0; gy < H; gy += 20) {
-      bctx.beginPath(); bctx.moveTo(x, gy); bctx.lineTo(x + w, gy); bctx.stroke();
-    }
-    bctx.strokeStyle = 'rgba(30,80,30,0.8)';
-    bctx.lineWidth = 1;
-    for (let gx = x; gx < x + w + 100; gx += 100) {
-      const gxR = Math.round(gx / 100) * 100;
-      if (gxR >= x && gxR < x + w) {
-        bctx.beginPath(); bctx.moveTo(gxR, 0); bctx.lineTo(gxR, H); bctx.stroke();
-      }
-    }
   }
 
   drawGrid();
