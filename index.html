@@ -759,7 +759,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <div class="fr c2"><div class="mf"><label>Date *</label><input type="date" id="vc-date" /></div><div class="mf"><label>Type</label><select id="vc-type"><option>Vaccine</option><option>Therapeutic Injection</option><option>Insulin</option><option>Immunotherapy</option><option>Corticosteroid</option><option>Vitamin/Supplement</option><option>Other Injection</option></select></div></div>
       <div class="mf"><label>Vaccine / Injection Name *</label><input type="text" id="vc-name" placeholder="e.g. Influenza (Fluzone), Insulin Glargine" /></div>
       <div class="fr c2"><div class="mf"><label>Dose / Lot Number</label><input type="text" id="vc-dose" placeholder="e.g. 0.5 mL / Lot #ABC123" /></div><div class="mf"><label>Route</label><select id="vc-route"><option>IM (Intramuscular)</option><option>SubQ (Subcutaneous)</option><option>Intradermal</option><option>IV (Intravenous)</option><option>Nasal</option><option>Oral</option></select></div></div>
-      <div class="fr c2"><div class="mf"><label>Site</label><select id="vc-site"><option>Left deltoid</option><option>Right deltoid</option><option>Left anterolateral thigh</option><option>Right anterolateral thigh</option><option>Left abdomen</option><option>Right abdomen</option><option>Other</option></select></div><div class="mf"><label>Administered By</label><input type="text" id="vc-admin" placeholder="Name / credential" /></div></div>
+      <div class="fr c2"><div class="mf"><label>Site</label><select id="vc-site"><option>Left deltoid</option><option>Right deltoid</option><option>Left anterolateral thigh</option><option>Right anterolateral thigh</option><option>Left abdomen</option><option>Right abdomen</option><option>Left gluteus</option><option>Right gluteus</option><option>Other</option></select></div><div class="mf"><label>Administered By</label><input type="text" id="vc-admin" placeholder="Name / credential" /></div></div>
       <div class="mf"><label>Notes / Observations</label><textarea id="vc-notes" placeholder="Post-admin observations, next dose due..."></textarea></div>
       <div class="mf"><label>Performed By</label><input type="text" id="vc-performed-by" placeholder="Student name" /></div>
     </div>
@@ -773,10 +773,10 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
     <div class="modal-head"><h2>📈 Record EKG</h2><button class="modal-x" onclick="closeM('modal-ekg')">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="ek-edit-index" value="-1" />
-      <div class="fr c3"><div class="mf"><label>Date *</label><input type="date" id="ek-date" /></div><div class="mf"><label>Time</label><input type="time" id="ek-time" /></div><div class="mf"><label>Rhythm *</label><select id="ek-rhythm"><option>Normal Sinus Rhythm (NSR)</option><option>Sinus Tachycardia</option><option>Sinus Bradycardia</option><option>Atrial Fibrillation (AFib)</option><option>Atrial Flutter</option><option>SVT</option><option>Ventricular Tachycardia (VTach)</option><option>Ventricular Fibrillation (VFib)</option><option>1st Degree Heart Block</option><option>2nd Degree Heart Block</option><option>3rd Degree Heart Block</option><option>LBBB</option><option>RBBB</option><option>PVCs</option><option>PACs</option><option>Other</option></select></div></div>
+      <div class="fr c3"><div class="mf"><label>Date *</label><input type="date" id="ek-date" /></div><div class="mf"><label>Time (24-hr)</label><input type="time" id="ek-time" step="60" /></div><div class="mf"><label>Rhythm *</label><select id="ek-rhythm"><option>Normal Sinus Rhythm (NSR)</option><option>Sinus Tachycardia</option><option>Sinus Bradycardia</option><option>Atrial Fibrillation (AFib)</option><option>Atrial Flutter</option><option>SVT</option><option>Ventricular Tachycardia (VTach)</option><option>Ventricular Fibrillation (VFib)</option><option>1st Degree Heart Block</option><option>2nd Degree Heart Block</option><option>3rd Degree Heart Block</option><option>LBBB</option><option>RBBB</option><option>PVCs</option><option>PACs</option><option>Other</option></select></div></div>
       <div class="fr c2"><div class="mf"><label>Heart Rate (bpm)</label><input type="number" id="ek-hr" placeholder="72" /></div><div class="mf"><label>PR Interval (ms)</label><input type="number" id="ek-pr" placeholder="160" /></div></div>
       <div class="fr c3"><div class="mf"><label>QRS Duration (ms)</label><input type="number" id="ek-qrs" placeholder="80" /></div><div class="mf"><label>QT Interval (ms)</label><input type="number" id="ek-qt" placeholder="400" /></div><div class="mf"><label>QTc (ms)</label><input type="number" id="ek-qtc" placeholder="420" /></div></div>
-      <div class="fr c2"><div class="mf"><label>Axis</label><select id="ek-axis"><option>Normal Axis</option><option>Left Axis Deviation (LAD)</option><option>Right Axis Deviation (RAD)</option><option>Extreme Axis</option></select></div><div class="mf"><label>ST Changes</label><select id="ek-st"><option>None</option><option>ST Elevation (STEMI pattern)</option><option>ST Depression</option><option>Nonspecific ST changes</option></select></div></div>
+      <div class="fr c2"><div class="mf"><label>Axis</label><select id="ek-axis"><option>Normal Axis</option><option>Left Axis Deviation (LAD)</option><option>Right Axis Deviation (RAD)</option><option>Extreme Axis</option></select></div></div>
       <div class="mf"><label>Interpretation / Findings *</label><textarea id="ek-interp" placeholder="Full EKG interpretation, clinical correlation..." style="min-height:90px"></textarea></div>
       <div class="fr c2"><div class="mf"><label>Ordered / Interpreted By (Doctor)</label><input type="text" id="ek-prov" placeholder="Dr. Smith" /></div><div class="mf"><label>Performed By</label><input type="text" id="ek-performed-by" placeholder="Student name" /></div></div>
     </div>
@@ -997,7 +997,7 @@ const avatarColor = n => { const c=['#2f81f7','#3fb950','#d29922','#a371f7','#39
 const initials = p => ((p.first||'?')[0]+(p.last||'?')[0]).toUpperCase();
 const genMRN = () => 'MRN-' + Date.now().toString(36).toUpperCase().slice(-6);
 const today = () => new Date().toISOString().split('T')[0];
-const nowTime = () => new Date().toTimeString().slice(0,5);
+const nowTime = () => { const n = new Date(); return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0'); };
 
 function toast(msg, type='success') {
   const el = document.getElementById('toast');
@@ -1671,7 +1671,7 @@ function renderEKGs() {
       return `<div class="ekg-record">
         <canvas class="ekg-canvas" id="ekgc-${i}"></canvas>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:10px">
-          <div><div style="font-size:14px;font-weight:600;color:var(--text)">${e.rhythm}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Axis: ${e.axis} · ST: ${e.st}</div></div>
+          <div><div style="font-size:14px;font-weight:600;color:var(--text)">${e.rhythm}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">Axis: ${e.axis}</div></div>
           <div style="display:flex;gap:8px;align-items:center">
             <button class="btn-waveform" onclick="toggleLiveWaveform(${i}, this)" data-running="false">▶ Live Waveform</button>
             <button class="btn warning sm" onclick="editEKG(${i})">✏ Edit</button>
@@ -1701,7 +1701,7 @@ function renderEKGs() {
             <div class="ekg-stat">QT <span>${e.qt||'—'}</span> ms</div>
             <div class="ekg-stat">QTc <span>${e.qtc||'—'}</span> ms</div>
             <div class="ekg-stat">Axis <span>${e.axis||'—'}</span></div>
-            <div class="ekg-stat">ST <span>${e.st||'None'}</span></div>
+            <div class="ekg-stat">Axis <span>${e.axis||'—'}</span></div>
           </div>
         </div>
       </div>`;
@@ -2330,7 +2330,6 @@ function editEKG(i) {
   document.getElementById('ek-qt').value = e.qt||'';
   document.getElementById('ek-qtc').value = e.qtc||'';
   setSelectVal('ek-axis', e.axis);
-  setSelectVal('ek-st', e.st);
   document.getElementById('ek-interp').value = e.interpretation||e.interp||'';
   document.getElementById('ek-prov').value = e.provider||e.prov||'';
   document.getElementById('ek-performed-by').value = e.performedBy||e.by||'';
@@ -2509,7 +2508,7 @@ async function saveEKG() {
   const interp = document.getElementById('ek-interp').value.trim();
   if (!interp) { toast('Interpretation required','error'); return; }
   const idx = parseInt(document.getElementById('ek-edit-index').value);
-  const item = { date: document.getElementById('ek-date').value, time: document.getElementById('ek-time').value, rhythm: document.getElementById('ek-rhythm').value, hr: document.getElementById('ek-hr').value, pr: document.getElementById('ek-pr').value, qrs: document.getElementById('ek-qrs').value, qt: document.getElementById('ek-qt').value, qtc: document.getElementById('ek-qtc').value, axis: document.getElementById('ek-axis').value, st: document.getElementById('ek-st').value, interpretation: interp, provider: document.getElementById('ek-prov').value, performedBy: document.getElementById('ek-performed-by').value || currentUserProfile?.displayName || currentUser.email, by: currentUserProfile?.displayName || currentUser.email };
+  const item = { date: document.getElementById('ek-date').value, time: document.getElementById('ek-time').value, rhythm: document.getElementById('ek-rhythm').value, hr: document.getElementById('ek-hr').value, pr: document.getElementById('ek-pr').value, qrs: document.getElementById('ek-qrs').value, qt: document.getElementById('ek-qt').value, qtc: document.getElementById('ek-qtc').value, axis: document.getElementById('ek-axis').value, interpretation: interp, provider: document.getElementById('ek-prov').value, performedBy: document.getElementById('ek-performed-by').value || currentUserProfile?.displayName || currentUser.email, by: currentUserProfile?.displayName || currentUser.email };
   if (idx >= 0) {
     item.recordedAt = (currentPatient.ekgs[idx]||{}).recordedAt || new Date().toISOString();
     await replaceArrayItem('ekgs', idx, item); toast('EKG updated');
