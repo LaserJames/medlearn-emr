@@ -1476,9 +1476,10 @@ function renderPatientHeader() {
   document.getElementById('ch-blood').textContent = p.blood ? '🩸 '+p.blood : '';
   document.getElementById('ch-prov').textContent = p.provider ? '👨‍⚕️ '+p.provider : '';
   const visitNum = p.visitNumber || 1;
-  const visitDate = p.visitStartedAt ? ' · ' + fmtDate(p.visitStartedAt.toDate ? p.visitStartedAt.toDate().toISOString().split('T')[0] : p.visitStartedAt) : '';
+  const visitDate = p.visitStartedAt ? fmtDate(p.visitStartedAt.toDate ? p.visitStartedAt.toDate().toISOString().split('T')[0] : p.visitStartedAt) : '';
+  const visitComplete = p.visitStatus === 'complete';
   const visitEl = document.getElementById('ch-visit');
-  if (visitEl) visitEl.textContent = `📋 Visit #${visitNum}${visitDate}`;
+  if (visitEl) visitEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;background:${visitComplete ? 'var(--green-soft)' : 'var(--accent-soft)'};border:1px solid ${visitComplete ? 'rgba(47,158,68,0.25)' : 'rgba(47,129,247,0.25)'};border-radius:20px;padding:3px 12px;font-size:15px;font-weight:700;color:${visitComplete ? 'var(--green)' : 'var(--accent-hover)'};letter-spacing:-0.3px">📋 Visit #${visitNum}${visitDate ? `<span style="font-size:11px;font-weight:400;opacity:0.8">· ${visitDate}</span>` : ''}${visitComplete ? `<span style="font-size:10px;font-weight:600;opacity:0.7">✓ FINALIZED</span>` : ''}</span>`;
   const bar = document.getElementById('allergy-bar');
   if ((p.allergies||[]).length) {
     bar.style.display = 'flex';
