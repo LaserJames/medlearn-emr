@@ -570,7 +570,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div>
             <div class="pt-header-name" id="ch-name"></div>
             <div class="pt-header-meta">
-              <span id="ch-mrn"></span><span id="ch-dob"></span><span id="ch-sex"></span><span id="ch-blood"></span><span id="ch-prov"></span>
+              <span id="ch-mrn"></span><span id="ch-dob"></span><span id="ch-sex"></span><span id="ch-blood"></span><span id="ch-prov"></span><span id="ch-visit" style="font-weight:600;color:var(--accent-hover)"></span>
             </div>
           </div>
           <div class="pt-header-actions">
@@ -1475,6 +1475,10 @@ function renderPatientHeader() {
   document.getElementById('ch-sex').textContent = (p.gender||p.sex) ? '⚧ '+(p.gender||p.sex) : '';
   document.getElementById('ch-blood').textContent = p.blood ? '🩸 '+p.blood : '';
   document.getElementById('ch-prov').textContent = p.provider ? '👨‍⚕️ '+p.provider : '';
+  const visitNum = p.visitNumber || 1;
+  const visitDate = p.visitStartedAt ? ' · ' + fmtDate(p.visitStartedAt.toDate ? p.visitStartedAt.toDate().toISOString().split('T')[0] : p.visitStartedAt) : '';
+  const visitEl = document.getElementById('ch-visit');
+  if (visitEl) visitEl.textContent = `📋 Visit #${visitNum}${visitDate}`;
   const bar = document.getElementById('allergy-bar');
   if ((p.allergies||[]).length) {
     bar.style.display = 'flex';
@@ -2873,7 +2877,8 @@ async function registerPatient() {
   if (!first||!last) { toast('First and last name required','error'); return; }
   if (!dob) { toast('Date of birth required','error'); return; }
   const mrn = genMRN();
-  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: currentUserProfile?.displayName || currentUser.email, campusId: currentUserProfile?.campusId || 'unknown', campusName: currentUserProfile?.campusName || 'Unknown Campus', createdAt: firebase.firestore.FieldValue.serverTimestamp(), vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], notes:[], vision:[] };
+  const initVisitId = 'visit-' + Date.now();
+  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: currentUserProfile?.displayName || currentUser.email, campusId: currentUserProfile?.campusId || 'unknown', campusName: currentUserProfile?.campusName || 'Unknown Campus', createdAt: firebase.firestore.FieldValue.serverTimestamp(), visitStatus: 'open', visitId: initVisitId, visitNumber: 1, visitStartedAt: firebase.firestore.FieldValue.serverTimestamp(), visitLog: [], vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], notes:[], vision:[] };
   const cc = document.getElementById('nr-cc').value.trim();
   if (cc) data.notes = [{ type:'Admission Note', author: currentUserProfile?.displayName||currentUser.email, content:`CHIEF COMPLAINT:\n${cc}`, time: new Date().toISOString() }];
   try {
@@ -3172,21 +3177,11 @@ function applyProgramVisibility() {
   if (isInstructor()) {
     showTab('rx', true);
     showTab('billing', visitComplete);
-    if (finalizeBtn) {
-      finalizeBtn.style.display = '';
-      finalizeBtn.className = visitComplete ? 'btn finalized sm' : 'btn finalize sm';
-      finalizeBtn.textContent = visitComplete ? '✓ Visit Finalized' : '✓ Finalize Visit';
-      if (visitComplete) finalizeBtn.onclick = null; else finalizeBtn.onclick = finalizeVisit;
-    }
+    if (finalizeBtn) setFinalizeBtnState(finalizeBtn, visitComplete);
   } else if (program === 'medical_assisting') {
     showTab('rx', true);
     showTab('billing', false);
-    if (finalizeBtn) {
-      finalizeBtn.style.display = '';
-      finalizeBtn.className = visitComplete ? 'btn finalized sm' : 'btn finalize sm';
-      finalizeBtn.textContent = visitComplete ? '✓ Visit Finalized' : '✓ Finalize Visit';
-      if (visitComplete) finalizeBtn.onclick = null; else finalizeBtn.onclick = finalizeVisit;
-    }
+    if (finalizeBtn) setFinalizeBtnState(finalizeBtn, visitComplete);
   } else if (program === 'billing_coding') {
     // Read-only full chart + billing tab when visit complete
     chartBody.classList.add('chart-readonly');
@@ -3226,8 +3221,57 @@ async function finalizeVisit() {
     });
     currentPatient.visitStatus = 'complete';
     applyProgramVisibility();
-    toast('Visit finalized — billing is now available');
+    renderPatientHeader();
+    toast('Visit #' + (currentPatient.visitNumber||1) + ' finalized — billing is now available');
   } catch(e) { toast('Error finalizing visit: ' + e.message, 'error'); }
+}
+
+function setFinalizeBtnState(btn, isComplete) {
+  btn.style.display = '';
+  if (isComplete) {
+    btn.className = 'btn primary sm';
+    btn.textContent = '＋ New Visit';
+    btn.onclick = startNewVisit;
+  } else {
+    btn.className = 'btn finalize sm';
+    btn.textContent = '✓ Finalize Visit';
+    btn.onclick = finalizeVisit;
+  }
+}
+
+async function startNewVisit() {
+  if (!currentPatient) return;
+  const visitNum = currentPatient.visitNumber || 1;
+  if (!confirm(`Start Visit #${visitNum + 1} for ${currentPatient.first} ${currentPatient.last}?\n\nThe current finalized visit will be archived. Rx Orders and Billing will reset for the new visit.`)) return;
+  const newVisitId = 'visit-' + Date.now();
+  const newVisitNumber = visitNum + 1;
+  const logEntry = {
+    visitId: currentPatient.visitId || ('visit-legacy-' + visitNum),
+    visitNumber: visitNum,
+    finalizedAt: currentPatient.finalizedAt || null,
+    finalizedBy: currentPatient.finalizedBy || null
+  };
+  try {
+    await db.collection('patients').doc(currentPatient.id).update({
+      visitStatus: 'open',
+      visitId: newVisitId,
+      visitNumber: newVisitNumber,
+      visitStartedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      finalizedAt: null,
+      finalizedBy: null,
+      visitLog: firebase.firestore.FieldValue.arrayUnion(logEntry)
+    });
+    currentPatient.visitStatus = 'open';
+    currentPatient.visitId = newVisitId;
+    currentPatient.visitNumber = newVisitNumber;
+    currentPatient.visitStartedAt = new Date();
+    currentPatient.finalizedAt = null;
+    currentPatient.finalizedBy = null;
+    applyProgramVisibility();
+    renderPatientHeader();
+    setTab('overview');
+    toast(`Visit #${newVisitNumber} started — chart is now open`);
+  } catch(e) { toast('Error starting new visit: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════
@@ -3242,7 +3286,9 @@ async function renderRxTab() {
   try {
     const snap = await db.collection('prescriptions')
       .where('patientId', '==', currentPatient.id).get();
+    const currentVisitId = currentPatient.visitId || null;
     _rxOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(r => !currentVisitId || r.visitId === currentVisitId)
       .sort((a, b) => (b.orderedAt?.seconds || 0) - (a.orderedAt?.seconds || 0));
     const tc = document.getElementById('tc-rx');
     if (tc) tc.textContent = _rxOrders.length;
@@ -3287,6 +3333,8 @@ async function saveRxOrder() {
       patientId: currentPatient.id,
       patientName: `${currentPatient.last}, ${currentPatient.first}`,
       mrn: currentPatient.mrn,
+      visitId: currentPatient.visitId || null,
+      visitNumber: currentPatient.visitNumber || 1,
       campusId: currentUserProfile.campusId,
       orderedByUid: currentUser.uid,
       prescriber: document.getElementById('rx-prescriber').value,
@@ -3318,7 +3366,9 @@ async function renderBillingTab() {
   try {
     const snap = await db.collection('claims')
       .where('patientId', '==', p.id).get();
+    const currentVisitId = p.visitId || null;
     existingClaims = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(c => !currentVisitId || c.visitId === currentVisitId)
       .sort((a,b) => (b.submittedAt?.seconds||0) - (a.submittedAt?.seconds||0));
   } catch(e) { console.warn('Could not load claims:', e); }
 
@@ -3414,6 +3464,8 @@ async function saveClaim(status) {
   try {
     await db.collection('claims').add({
       patientId: p.id,
+      visitId: p.visitId || null,
+      visitNumber: p.visitNumber || 1,
       campusId: currentUserProfile.campusId,
       submittedByUid: currentUser.uid,
       submittedByName: currentUserProfile?.displayName || currentUser.email,
