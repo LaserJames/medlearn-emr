@@ -350,6 +350,72 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .ros-pos-val { color: #c53030; }
 .ros-neg-label { font-weight: 700; color: #276749; margin-right: 3px; }
 .ros-neg-val { color: var(--text2, #718096); }
+
+/* ── Program badge in topbar ── */
+.program-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; margin-left: 4px; }
+.program-badge.ma { background: rgba(47,129,247,0.12); color: var(--accent-hover); }
+.program-badge.bc { background: rgba(163,113,247,0.12); color: var(--purple); }
+.program-badge.pt { background: rgba(47,158,68,0.12); color: var(--green); }
+
+/* ── Read-only chart mode ── */
+.chart-readonly .btn.primary, .chart-readonly .btn.warning, .chart-readonly .btn.danger,
+.chart-readonly .pt-header-actions .btn { display: none !important; }
+
+/* ── Finalize Visit button ── */
+.btn.finalize { color: var(--green); border-color: rgba(47,158,68,0.3); background: var(--green-soft); }
+.btn.finalize:hover { background: rgba(47,158,68,0.2); }
+.btn.finalized { color: var(--text3); border-color: var(--border); background: var(--surface3); cursor: default; }
+
+/* ── Rx Order tab ── */
+.rx-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
+.rx-status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+.rx-status.ordered { background: var(--yellow-soft); color: var(--yellow); }
+.rx-status.verified { background: var(--accent-soft); color: var(--accent-hover); }
+.rx-status.filled { background: rgba(57,208,216,0.12); color: var(--cyan); }
+.rx-status.dispensed { background: var(--green-soft); color: var(--green); }
+
+/* ── Pharmacy Queue page ── */
+#page-pharmacy { overflow-y: auto; flex: 1; padding: 28px; background: var(--bg); }
+#page-pharmacy h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+#page-pharmacy .page-sub { color: var(--text2); font-size: 13px; margin-bottom: 22px; }
+.rx-queue-table { width: 100%; border-collapse: collapse; }
+.rx-queue-table th { padding: 9px 14px; text-align: left; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+.rx-queue-table td { padding: 11px 14px; font-size: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.rx-queue-table tr:last-child td { border-bottom: none; }
+.rx-queue-table tr:hover td { background: var(--surface2); cursor: pointer; }
+
+/* ── CMS-1500 Billing tab ── */
+.cms-form { font-size: 12px; }
+.cms-section { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+.cms-section-head { background: var(--surface3); padding: 7px 14px; font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+.cms-field { display: flex; flex-direction: column; }
+.cms-field label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+.cms-field input, .cms-field select { padding: 6px 9px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; color: var(--text); font-family: var(--font); }
+.cms-field input:focus, .cms-field select:focus { outline: none; border-color: var(--accent); }
+.cms-grid { display: grid; gap: 10px; padding: 12px; }
+.cms-grid.c2 { grid-template-columns: 1fr 1fr; }
+.cms-grid.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.cms-grid.c4 { grid-template-columns: repeat(4,1fr); }
+.cms-grid.c6 { grid-template-columns: repeat(6,1fr); }
+.cms-icd-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; padding: 12px; }
+.service-line-head { display: grid; grid-template-columns: 90px 60px 90px 90px 1fr 80px 80px; gap: 6px; padding: 6px 12px; background: var(--surface3); border-bottom: 1px solid var(--border); }
+.service-line-head span { font-size: 9px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+.service-line-row { display: grid; grid-template-columns: 90px 60px 90px 90px 1fr 80px 80px; gap: 6px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); }
+.service-line-row:last-child { border-bottom: none; }
+.service-line-row input { padding: 5px 7px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; color: var(--text); font-family: var(--font); width: 100%; }
+.service-line-row input:focus { outline: none; border-color: var(--accent); }
+
+/* ── Grading Queue ── */
+.grade-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+.grade-tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); transition: all 0.15s; }
+.grade-tab.active { background: var(--accent-soft); border-color: rgba(47,129,247,0.25); color: var(--accent-hover); }
+.grade-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
+.grade-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.grade-card-student { font-size: 13px; font-weight: 600; }
+.grade-card-time { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+.grade-note-wrap { display: flex; gap: 8px; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.grade-note-wrap input { flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font-family: var(--font); font-size: 12px; color: var(--text); }
+.grade-note-wrap input:focus { outline: none; border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -391,7 +457,16 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <div class="field"><label>Email Address</label><input type="email" id="rg-email" placeholder="you@school.edu" /></div>
         <div class="field field-row">
           <div><label>Password</label><input type="password" id="rg-pass" placeholder="Min. 6 characters" /></div>
-          <div><label>Role</label><select id="rg-role"><option value="student">Student</option><option value="instructor">Instructor</option></select></div>
+          <div><label>Role</label><select id="rg-role" onchange="toggleProgramField()"><option value="student">Student</option><option value="instructor">Instructor</option></select></div>
+        </div>
+        <div class="field" id="rg-program-wrap">
+          <label>Program</label>
+          <select id="rg-program">
+            <option value="medical_assisting">Medical Assisting</option>
+            <option value="billing_coding">Billing &amp; Coding</option>
+            <option value="pharmacy_tech">Pharmacy Technology</option>
+          </select>
+          <div class="class-code-note">Select your enrolled program.</div>
         </div>
         <div class="field">
           <label>Class Registration Code</label>
@@ -438,6 +513,8 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
         <div class="nav-item" id="nav-chart" onclick="showPage('chart')"><span class="nav-icon">📋</span>Active Chart</div>
         <div class="nav-item" id="nav-campuses" onclick="showPage('campuses')" style="display:none"><span class="nav-icon">🏫</span>Manage Campuses</div>
+        <div class="nav-item" id="nav-pharmacy" onclick="showPage('pharmacy')" style="display:none"><span class="nav-icon">💊</span>Pharmacy Queue</div>
+        <div class="nav-item" id="nav-grading" onclick="showPage('grading')" style="display:none"><span class="nav-icon">📝</span>Grading Queue</div>
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
@@ -500,6 +577,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
             <button class="btn sm" onclick="openM('modal-vitals')">+ Vitals</button>
             <button class="btn sm" onclick="openM('modal-note')">+ Note</button>
             <button class="btn primary sm" onclick="openM('modal-intake')">Full Intake</button>
+            <button class="btn finalize sm" id="btn-finalize-visit" onclick="finalizeVisit()" style="display:none">✓ Finalize Visit</button>
             <button class="btn danger sm" onclick="deletePatient()" style="border:1px solid rgba(248,81,73,0.3)">🗑 Delete Patient</button>
           </div>
         </div>
@@ -516,6 +594,8 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="c-tab" data-tab="ekg">EKG <span class="tc" id="tc-e">0</span></div>
           <div class="c-tab" data-tab="notes">Notes <span class="tc" id="tc-n">0</span></div>
           <div class="c-tab" data-tab="vision">👁 Vision</div>
+          <div class="c-tab" id="tab-btn-rx" data-tab="rx" style="display:none">📋 Rx Orders <span class="tc" id="tc-rx">0</span></div>
+          <div class="c-tab" id="tab-btn-billing" data-tab="billing" style="display:none">🏥 Billing</div>
         </div>
         <div class="chart-body" id="chart-body">
           <div class="tab-content active" id="tab-overview"></div>
@@ -529,6 +609,8 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="tab-content" id="tab-ekg"></div>
           <div class="tab-content" id="tab-notes"></div>
           <div class="tab-content" id="tab-vision"></div>
+          <div class="tab-content" id="tab-rx"></div>
+          <div class="tab-content" id="tab-billing"></div>
         </div>
       </div>
     </div>
@@ -562,6 +644,39 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- PHARMACY QUEUE -->
+    <div id="page-pharmacy" class="page" style="display:none;">
+      <h1>💊 Pharmacy Queue</h1>
+      <p class="page-sub">Pending and active prescriptions for your campus. Click a row to open the fill workflow.</p>
+      <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+        <button class="btn sm" onclick="filterRxQueue('all')" id="rxq-btn-all" style="background:var(--accent-soft);border-color:rgba(47,129,247,0.25);color:var(--accent-hover)">All</button>
+        <button class="btn sm" onclick="filterRxQueue('ordered')" id="rxq-btn-ordered">Ordered</button>
+        <button class="btn sm" onclick="filterRxQueue('verified')" id="rxq-btn-verified">Verified</button>
+        <button class="btn sm" onclick="filterRxQueue('dispensed')" id="rxq-btn-dispensed">Dispensed</button>
+        <button class="btn sm" onclick="loadPharmacyQueue()" style="margin-left:auto">↺ Refresh</button>
+      </div>
+      <div class="dash-card">
+        <div style="overflow-y:auto;max-height:calc(100vh - 280px)">
+          <table class="rx-queue-table">
+            <thead><tr><th>Patient</th><th>MRN</th><th>Drug</th><th>Dose</th><th>Sig</th><th>Route</th><th>Refills</th><th>Provider</th><th>Ordered</th><th>Status</th><th></th></tr></thead>
+            <tbody id="rxq-tbody"><tr><td colspan="11" style="text-align:center;color:var(--text3);padding:32px">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRADING QUEUE (Instructor Only) -->
+    <div id="page-grading" class="page" style="display:none;overflow-y:auto;padding:28px;">
+      <h1>📝 Grading Queue</h1>
+      <p class="page-sub">Review and grade student-submitted work across all programs.</p>
+      <div class="grade-tabs">
+        <div class="grade-tab active" onclick="switchGradeTab('claims',this)">🏥 Claims <span class="tc" id="gc-claims-count">0</span></div>
+        <div class="grade-tab" onclick="switchGradeTab('fills',this)">💊 Rx Fills <span class="tc" id="gc-fills-count">0</span></div>
+        <div class="grade-tab" onclick="switchGradeTab('visits',this)">📋 Completed Visits <span class="tc" id="gc-visits-count">0</span></div>
+      </div>
+      <div id="grading-content"><div style="color:var(--text3);font-size:13px">Loading...</div></div>
     </div>
 
     <!-- CAMPUS MANAGER (Admin Only) -->
@@ -922,6 +1037,54 @@ P (Plan): Treatment, orders, follow-up"></textarea></div>
   </div>
 </div>
 
+<!-- RX ORDER -->
+<div class="overlay hidden" id="modal-rx">
+  <div class="modal">
+    <div class="modal-head"><h2>📋 Write Rx Order</h2><button class="modal-x" onclick="closeM('modal-rx')">✕</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Drug Name *</label><input type="text" id="rx-drug" placeholder="e.g. Amoxicillin" /></div>
+      <div class="fr c2">
+        <div class="mf"><label>Dose *</label><input type="text" id="rx-dose" placeholder="e.g. 500 mg" /></div>
+        <div class="mf"><label>Route *</label>
+          <select id="rx-route">
+            <option value="PO">PO (Oral)</option>
+            <option value="IV">IV (Intravenous)</option>
+            <option value="IM">IM (Intramuscular)</option>
+            <option value="SQ">SQ (Subcutaneous)</option>
+            <option value="topical">Topical</option>
+            <option value="inhaled">Inhaled</option>
+          </select>
+        </div>
+      </div>
+      <div class="mf"><label>Sig (Instructions) *</label><textarea id="rx-sig" placeholder="e.g. Take 1 capsule by mouth three times daily for 10 days" style="min-height:70px"></textarea></div>
+      <div class="fr c2">
+        <div class="mf"><label>Quantity</label><input type="number" id="rx-qty" placeholder="e.g. 30" min="1" /></div>
+        <div class="mf"><label>Refills (0–5)</label><input type="number" id="rx-refills" placeholder="0" min="0" max="5" value="0" /></div>
+      </div>
+      <div class="mf"><label>Prescriber</label><input type="text" id="rx-prescriber" placeholder="Auto-filled" readonly style="color:var(--text2)" /></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-rx')">Cancel</button><button class="btn primary" onclick="saveRxOrder()">Submit Rx Order</button></div>
+  </div>
+</div>
+
+<!-- RX FILL (Pharmacy Tech) -->
+<div class="overlay hidden" id="modal-rx-fill">
+  <div class="modal">
+    <div class="modal-head"><h2>💊 Fill Prescription</h2><button class="modal-x" onclick="closeM('modal-rx-fill')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="rxf-rx-id" value="" />
+      <div id="rxf-rx-summary" style="background:var(--accent-soft);border:1px solid rgba(47,129,247,0.2);border-radius:var(--radius);padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--accent-hover);line-height:1.7"></div>
+      <div class="mf"><label>Verified Drug Name *</label><input type="text" id="rxf-drug" placeholder="Confirm drug dispensed" /></div>
+      <div class="fr c2">
+        <div class="mf"><label>Quantity Dispensed *</label><input type="number" id="rxf-qty" placeholder="e.g. 30" min="1" /></div>
+        <div class="mf"><label>Lot Number (optional)</label><input type="text" id="rxf-lot" placeholder="e.g. LOT-4821A" /></div>
+      </div>
+      <div class="mf"><label>Dispensing Note</label><textarea id="rxf-note" placeholder="Any notes about the fill..." style="min-height:70px"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-rx-fill')">Cancel</button><button class="btn primary" onclick="saveRxFill()">Mark as Dispensed</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1062,7 +1225,8 @@ btn.textContent = 'Creating account...';
     const cred = await auth.createUserWithEmailAndPassword(email, pass);
     await cred.user.updateProfile({ displayName: first + ' ' + last });
     const userRole = campusMatch.role || role;
-await db.collection('users').doc(cred.user.uid).set({ displayName: first + ' ' + last, firstName: first, lastName: last, email, role: userRole, campusId: campusMatch.campusId, campusName: campusMatch.campusName, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    const program = (userRole === 'student') ? (document.getElementById('rg-program').value || 'medical_assisting') : null;
+await db.collection('users').doc(cred.user.uid).set({ displayName: first + ' ' + last, firstName: first, lastName: last, email, role: userRole, program, campusId: campusMatch.campusId, campusName: campusMatch.campusName, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     toast(`Welcome, ${first}! Account created successfully.`);
   } catch(e) { showAuthError('reg', friendlyAuthError(e.code)); btn.disabled = false; btn.textContent = 'Create Account →'; }
 }
@@ -1105,16 +1269,37 @@ function showApp() {
   document.getElementById('user-ava').textContent = ava;
   document.getElementById('user-ava').style.background = avatarColor(name);
   document.getElementById('user-name-display').textContent = name;
-  document.getElementById('user-role-display').textContent = role === 'admin' ? 'System Admin' : role === 'instructor' ? 'Instructor' : 'Student Clinician';
+  const programLabels = { medical_assisting: 'Medical Assisting', billing_coding: 'Billing & Coding', pharmacy_tech: 'Pharmacy Tech' };
+  const prog = currentUserProfile?.program;
+  const roleLabel = role === 'admin' ? 'System Admin' : role === 'instructor' ? 'Instructor' : (programLabels[prog] || 'Student Clinician');
+  document.getElementById('user-role-display').textContent = roleLabel;
   document.getElementById('dash-greeting').textContent = `Welcome back, ${name.split(' ')[0]}. ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.`;
   document.getElementById('nt-author').value = name;
   document.getElementById('ek-prov').value = name;
+  // Show/hide nav items by role and program
   if (role === 'admin') {
     document.getElementById('nav-campuses').style.display = 'flex';
+    document.getElementById('nav-grading').style.display = 'flex';
     seedCampusesIfNeeded();
-  } else {
-    // Check if this campus's subscription is expiring soon — show banner for non-admins
+  } else if (role === 'instructor') {
+    document.getElementById('nav-pharmacy').style.display = 'flex';
+    document.getElementById('nav-grading').style.display = 'flex';
     checkRenewalBanner();
+  } else {
+    // Students
+    if (prog === 'pharmacy_tech') {
+      document.getElementById('nav-pharmacy').style.display = 'flex';
+    }
+    checkRenewalBanner();
+  }
+  // Hide "New Patient" and quick-actions for read-only programs
+  if (prog === 'billing_coding' || prog === 'pharmacy_tech') {
+    const newPtBtn = document.querySelector('.topbar-actions .btn.primary.sm');
+    if (newPtBtn) newPtBtn.style.display = 'none';
+    const quickActions = document.querySelectorAll('.sidebar-section .nav-item:not([id])');
+    quickActions.forEach(el => el.style.display = 'none');
+    const qaLabel = document.querySelector('.sidebar-label');
+    if (qaLabel) qaLabel.style.display = 'none';
   }
   subscribePatients();
 }
@@ -1145,7 +1330,7 @@ function subscribePatients() {
 
 function showPage(p) {
   // Hide all pages using inline style (beats CSS specificity)
-  ['dashboard','chart','register','campuses'].forEach(name => {
+  ['dashboard','chart','register','campuses','pharmacy','grading'].forEach(name => {
     const el = document.getElementById('page-' + name);
     if (el) el.style.display = 'none';
   });
@@ -1154,11 +1339,14 @@ function showPage(p) {
   // Show the target page
   const pg = document.getElementById('page-' + p);
   if (pg) {
-    pg.style.display = (p === 'campuses' || p === 'dashboard' || p === 'register') ? 'block' : 'flex';
+    const blockPages = ['campuses','dashboard','register','pharmacy','grading'];
+    pg.style.display = blockPages.includes(p) ? 'block' : 'flex';
   }
   const nav = document.getElementById('nav-' + p);
   if (nav) nav.classList.add('active');
   if (p === 'campuses') loadCampuses();
+  if (p === 'pharmacy') loadPharmacyQueue();
+  if (p === 'grading') { _gradingTab = 'claims'; loadGradingQueues(); }
 }
 function requirePatient(modalId) {
   if (!currentPatient) { toast('Please select a patient first', 'error'); return; }
@@ -1262,7 +1450,10 @@ async function loadPatient(id) {
   chartEl.style.overflow = 'hidden';
 
   renderPatientHeader();
-  setTab('overview');
+  applyProgramVisibility();
+  // For pharmacy_tech, setTab is called inside applyProgramVisibility; otherwise default to overview
+  const prog = userProgram();
+  if (prog !== 'pharmacy_tech') setTab('overview');
 
   // FIX: wrap renderAllTabs in try/catch so errors surface instead of silently breaking
   try {
@@ -1304,7 +1495,11 @@ function updateTabCounts() {
   document.getElementById('tc-n').textContent = (p.notes||[]).length;
 }
 
-document.querySelectorAll('.c-tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+document.querySelectorAll('.c-tab').forEach(t => t.addEventListener('click', () => {
+  setTab(t.dataset.tab);
+  if (t.dataset.tab === 'rx') renderRxTab();
+  if (t.dataset.tab === 'billing') renderBillingTab();
+}));
 function setTab(name) {
   document.querySelectorAll('.c-tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.tab-content').forEach(c => {
@@ -1317,6 +1512,11 @@ function setTab(name) {
 function renderAllTabs() {
   renderOverview(); renderVitals(); renderMeds(); renderAllergies();
   renderPMH(); renderROS(); renderProcedures(); renderVaccines(); renderEKGs(); renderNotes(); renderVision();
+  // Async tabs — only render if visible
+  const rxBtn = document.getElementById('tab-btn-rx');
+  if (rxBtn && rxBtn.style.display !== 'none') renderRxTab();
+  const billingBtn = document.getElementById('tab-btn-billing');
+  if (billingBtn && billingBtn.style.display !== 'none') renderBillingTab();
 }
 
 // ═══════════════════════════════════════════
@@ -2924,6 +3124,494 @@ async function checkRenewalBanner() {
   } catch(e) { console.warn('Could not check renewal status:', e); }
 }
 
+
+// ═══════════════════════════════════════════
+// PROGRAM / ROLE HELPERS
+// ═══════════════════════════════════════════
+function userProgram() { return currentUserProfile?.program || null; }
+function userRole() { return currentUserProfile?.role || 'student'; }
+function isInstructor() { return userRole() === 'instructor' || userRole() === 'admin'; }
+function canWrite() {
+  if (isInstructor()) return true;
+  const p = userProgram();
+  return p === 'medical_assisting'; // billing_coding and pharmacy_tech are read-only on clinical tabs
+}
+
+function toggleProgramField() {
+  const role = document.getElementById('rg-role').value;
+  document.getElementById('rg-program-wrap').style.display = role === 'student' ? 'block' : 'none';
+}
+
+function applyProgramVisibility() {
+  if (!currentPatient) return;
+  const program = userProgram();
+  const role = userRole();
+  const chartBody = document.getElementById('chart-body');
+  const ptHeaderActions = document.querySelector('.pt-header-actions');
+
+  // Reset
+  chartBody.classList.remove('chart-readonly');
+  if (ptHeaderActions) ptHeaderActions.classList.remove('chart-readonly');
+
+  // Tab visibility
+  const showTab = (id, show) => {
+    const btn = document.getElementById('tab-btn-' + id);
+    if (btn) btn.style.display = show ? '' : 'none';
+  };
+
+  // All clinical tabs — reset to visible first
+  const allClinicalTabs = ['overview','vitals','medications','allergies','pmh','ros','procedures','vaccines','ekg','notes','vision'];
+  document.querySelectorAll('.c-tab[data-tab]').forEach(t => {
+    const tab = t.dataset.tab;
+    if (!['rx','billing'].includes(tab)) t.style.display = '';
+  });
+
+  const visitComplete = currentPatient.visitStatus === 'complete';
+  const finalizeBtn = document.getElementById('btn-finalize-visit');
+
+  if (isInstructor()) {
+    showTab('rx', true);
+    showTab('billing', visitComplete);
+    if (finalizeBtn) {
+      finalizeBtn.style.display = '';
+      finalizeBtn.className = visitComplete ? 'btn finalized sm' : 'btn finalize sm';
+      finalizeBtn.textContent = visitComplete ? '✓ Visit Finalized' : '✓ Finalize Visit';
+      if (visitComplete) finalizeBtn.onclick = null; else finalizeBtn.onclick = finalizeVisit;
+    }
+  } else if (program === 'medical_assisting') {
+    showTab('rx', true);
+    showTab('billing', false);
+    if (finalizeBtn) {
+      finalizeBtn.style.display = '';
+      finalizeBtn.className = visitComplete ? 'btn finalized sm' : 'btn finalize sm';
+      finalizeBtn.textContent = visitComplete ? '✓ Visit Finalized' : '✓ Finalize Visit';
+      if (visitComplete) finalizeBtn.onclick = null; else finalizeBtn.onclick = finalizeVisit;
+    }
+  } else if (program === 'billing_coding') {
+    // Read-only full chart + billing tab when visit complete
+    chartBody.classList.add('chart-readonly');
+    if (ptHeaderActions) ptHeaderActions.classList.add('chart-readonly');
+    showTab('rx', false);
+    showTab('billing', visitComplete);
+    if (finalizeBtn) finalizeBtn.style.display = 'none';
+  } else if (program === 'pharmacy_tech') {
+    // Only meds and allergies, read-only
+    chartBody.classList.add('chart-readonly');
+    if (ptHeaderActions) ptHeaderActions.classList.add('chart-readonly');
+    showTab('rx', false);
+    showTab('billing', false);
+    if (finalizeBtn) finalizeBtn.style.display = 'none';
+    // Hide all clinical tabs except medications and allergies
+    document.querySelectorAll('.c-tab[data-tab]').forEach(t => {
+      const tab = t.dataset.tab;
+      if (!['medications','allergies'].includes(tab)) t.style.display = 'none';
+    });
+    setTab('medications');
+  } else {
+    // Unknown student program — hide everything extra
+    showTab('rx', false);
+    showTab('billing', false);
+    if (finalizeBtn) finalizeBtn.style.display = 'none';
+  }
+}
+
+async function finalizeVisit() {
+  if (!currentPatient) return;
+  if (!confirm('Finalize this visit? Billing students will then be able to submit a claim.')) return;
+  try {
+    await db.collection('patients').doc(currentPatient.id).update({
+      visitStatus: 'complete',
+      finalizedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      finalizedBy: currentUserProfile?.displayName || currentUser.email
+    });
+    currentPatient.visitStatus = 'complete';
+    applyProgramVisibility();
+    toast('Visit finalized — billing is now available');
+  } catch(e) { toast('Error finalizing visit: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════
+// RX ORDER TAB
+// ═══════════════════════════════════════════
+let _rxOrders = [];
+
+async function renderRxTab() {
+  const el = document.getElementById('tab-rx');
+  if (!currentPatient) return;
+  el.innerHTML = '<div class="sc"><div class="sc-head"><h3>📋 Rx Orders</h3></div><div class="sc-body"><div style="color:var(--text3);font-size:13px">Loading...</div></div></div>';
+  try {
+    const snap = await db.collection('prescriptions')
+      .where('patientId', '==', currentPatient.id).get();
+    _rxOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.orderedAt?.seconds || 0) - (a.orderedAt?.seconds || 0));
+    const tc = document.getElementById('tc-rx');
+    if (tc) tc.textContent = _rxOrders.length;
+    const canAdd = isInstructor() || userProgram() === 'medical_assisting';
+    el.innerHTML = `<div class="sc"><div class="sc-head"><h3>📋 Rx Orders</h3>${canAdd ? '<button class="btn primary sm" onclick="openRxModal()">+ Write Rx</button>' : ''}</div><div class="sc-body"><table class="dt"><thead><tr><th>Drug</th><th>Dose</th><th>Route</th><th>Sig</th><th>Qty</th><th>Refills</th><th>Prescriber</th><th>Ordered</th><th>Status</th></tr></thead><tbody>${
+      !_rxOrders.length
+        ? '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📋</div>No Rx orders yet</div></td></tr>'
+        : _rxOrders.map(r => `<tr>
+            <td><strong>${r.drug}</strong></td>
+            <td style="font-family:var(--mono)">${r.dose}</td>
+            <td>${r.route}</td>
+            <td style="max-width:200px;font-size:11px;color:var(--text2)">${r.sig}</td>
+            <td style="font-family:var(--mono)">${r.qty||'—'}</td>
+            <td style="font-family:var(--mono)">${r.refills ?? '—'}</td>
+            <td style="font-size:11px;color:var(--text2)">${r.prescriber||'—'}</td>
+            <td style="font-size:10px;font-family:var(--mono);color:var(--text3)">${fmtDT(r.orderedAt)}</td>
+            <td><span class="rx-status ${r.rxStatus}">${r.rxStatus}</span></td>
+          </tr>`).join('')
+    }</tbody></table></div></div>`;
+  } catch(e) { el.innerHTML = `<div style="color:var(--red);padding:16px">Error loading Rx orders: ${e.message}</div>`; }
+}
+
+function openRxModal() {
+  if (!currentPatient) return;
+  document.getElementById('rx-drug').value = '';
+  document.getElementById('rx-dose').value = '';
+  document.getElementById('rx-route').value = 'PO';
+  document.getElementById('rx-sig').value = '';
+  document.getElementById('rx-qty').value = '';
+  document.getElementById('rx-refills').value = '0';
+  document.getElementById('rx-prescriber').value = currentUserProfile?.displayName || currentUser.email;
+  openM('modal-rx');
+}
+
+async function saveRxOrder() {
+  const drug = document.getElementById('rx-drug').value.trim();
+  const dose = document.getElementById('rx-dose').value.trim();
+  const sig = document.getElementById('rx-sig').value.trim();
+  if (!drug || !dose || !sig) { toast('Drug, dose, and sig are required', 'error'); return; }
+  try {
+    await db.collection('prescriptions').add({
+      patientId: currentPatient.id,
+      patientName: `${currentPatient.last}, ${currentPatient.first}`,
+      mrn: currentPatient.mrn,
+      campusId: currentUserProfile.campusId,
+      orderedByUid: currentUser.uid,
+      prescriber: document.getElementById('rx-prescriber').value,
+      drug, dose,
+      route: document.getElementById('rx-route').value,
+      sig,
+      qty: parseInt(document.getElementById('rx-qty').value) || null,
+      refills: parseInt(document.getElementById('rx-refills').value) || 0,
+      rxStatus: 'ordered',
+      orderedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeM('modal-rx');
+    toast('Rx order submitted');
+    renderRxTab();
+  } catch(e) { toast('Error saving Rx: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════
+// BILLING TAB (CMS-1500)
+// ═══════════════════════════════════════════
+async function renderBillingTab() {
+  const el = document.getElementById('tab-billing');
+  if (!currentPatient) return;
+  const p = currentPatient;
+  const canSubmit = isInstructor() || userProgram() === 'billing_coding';
+
+  // Load existing claims
+  let existingClaims = [];
+  try {
+    const snap = await db.collection('claims')
+      .where('patientId', '==', p.id).get();
+    existingClaims = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a,b) => (b.submittedAt?.seconds||0) - (a.submittedAt?.seconds||0));
+  } catch(e) { console.warn('Could not load claims:', e); }
+
+  const icdFields = ['A','B','C','D','E','F','G','H','I','J','K','L'].map((l,i) => `
+    <div class="cms-field"><label>${l}.</label><input type="text" id="cms-icd-${l.toLowerCase()}" placeholder="ICD-10" style="font-family:var(--mono);font-size:11px" /></div>`).join('');
+
+  const serviceLines = [1,2,3,4,5,6].map(n => `
+    <div class="service-line-row">
+      <input type="text" id="cms-sl${n}-date" placeholder="MM/DD/YY" />
+      <input type="text" id="cms-sl${n}-pos" placeholder="11" />
+      <input type="text" id="cms-sl${n}-cpt" placeholder="CPT" style="font-family:var(--mono)" />
+      <input type="text" id="cms-sl${n}-mod" placeholder="Mod" style="font-family:var(--mono)" />
+      <input type="text" id="cms-sl${n}-diag" placeholder="A,B,C" />
+      <input type="text" id="cms-sl${n}-charge" placeholder="$0.00" />
+      <input type="text" id="cms-sl${n}-units" placeholder="1" />
+    </div>`).join('');
+
+  const claimsHistory = !existingClaims.length ? '' : `
+    <div class="sc" style="margin-bottom:14px">
+      <div class="sc-head"><h3>📄 Submitted Claims</h3></div>
+      <div class="sc-body"><table class="dt"><thead><tr><th>Submitted</th><th>Status</th><th>Total Charge</th><th>Graded By</th></tr></thead><tbody>
+        ${existingClaims.map(c => `<tr>
+          <td style="font-size:11px;font-family:var(--mono)">${fmtDT(c.submittedAt)}</td>
+          <td><span class="badge ${c.claimStatus==='submitted'?'green':'yellow'}">${c.claimStatus}</span></td>
+          <td style="font-family:var(--mono)">$${c.totalCharge||'0.00'}</td>
+          <td style="font-size:11px;color:var(--text2)">${c.gradedByUid ? '✓ Graded' : '—'} ${c.gradeNote ? `<em style="color:var(--text3)">${c.gradeNote}</em>` : ''}</td>
+        </tr>`).join('')}
+      </tbody></table></div>
+    </div>`;
+
+  el.innerHTML = `
+    ${!p.visitStatus || p.visitStatus !== 'complete'
+      ? '<div style="padding:32px;text-align:center;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">🔒</div><div style="font-size:14px;font-weight:600;color:var(--text2)">Visit Not Yet Finalized</div><div style="font-size:12px;margin-top:6px">The medical assisting student must finalize this visit before a claim can be submitted.</div></div>'
+      : `${claimsHistory}
+        <div class="sc cms-form">
+          <div class="sc-head"><h3>📄 CMS-1500 Claim Form</h3></div>
+          <div class="sc-body">
+            <div class="cms-section">
+              <div class="cms-section-head">Patient Information (Fields 2, 3, 5, 26)</div>
+              <div class="cms-grid c2">
+                <div class="cms-field"><label>2. Patient Name</label><input type="text" id="cms-pt-name" value="${p.last||''}, ${p.first||''}" /></div>
+                <div class="cms-field"><label>26. Account Number (MRN)</label><input type="text" id="cms-mrn" value="${p.mrn||''}" style="font-family:var(--mono)" /></div>
+              </div>
+              <div class="cms-grid c3">
+                <div class="cms-field"><label>3. Date of Birth</label><input type="text" id="cms-dob" value="${fmtDate(p.dob)}" /></div>
+                <div class="cms-field"><label>3. Sex</label><select id="cms-sex"><option ${(p.gender||p.sex)==='Male'?'selected':''}>Male</option><option ${(p.gender||p.sex)==='Female'?'selected':''}>Female</option><option value="">Unknown</option></select></div>
+                <div class="cms-field"><label>1. Insurance Type</label><select id="cms-ins-type"><option>Private</option><option>Medicare</option><option>Medicaid</option><option>TRICARE</option><option>Other</option></select></div>
+              </div>
+              <div class="cms-grid c2">
+                <div class="cms-field"><label>5. Patient Address</label><input type="text" id="cms-addr" value="${p.address||''}" /></div>
+                <div class="cms-field"><label>11. Insurance ID</label><input type="text" id="cms-ins-id" placeholder="Member ID" /></div>
+              </div>
+            </div>
+            <div class="cms-section">
+              <div class="cms-section-head">Diagnosis Codes — Field 21 (ICD-10 A through L)</div>
+              <div class="cms-icd-grid">${icdFields}</div>
+            </div>
+            <div class="cms-section">
+              <div class="cms-section-head">Service Lines — Field 24</div>
+              <div class="service-line-head">
+                <span>Date of Service</span><span>POS</span><span>CPT Code</span><span>Modifier</span><span>Diag Ptr</span><span>Charge</span><span>Units</span>
+              </div>
+              ${serviceLines}
+            </div>
+            <div class="cms-section">
+              <div class="cms-section-head">Provider / Billing Info (Fields 25, 31, 33)</div>
+              <div class="cms-grid c3">
+                <div class="cms-field"><label>25. Federal Tax ID</label><input type="text" id="cms-taxid" placeholder="XX-XXXXXXX" /></div>
+                <div class="cms-field"><label>31. Signature / Date</label><input type="text" id="cms-sig" value="${currentUserProfile?.displayName||''}" /></div>
+                <div class="cms-field"><label>Total Charge</label><input type="text" id="cms-total" placeholder="$0.00" /></div>
+              </div>
+            </div>
+            ${canSubmit ? `<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+              <button class="btn" onclick="saveClaim('draft')">Save Draft</button>
+              <button class="btn primary" onclick="saveClaim('submitted')">Submit Claim</button>
+            </div>` : ''}
+          </div>
+        </div>`}`;
+}
+
+async function saveClaim(status) {
+  const p = currentPatient;
+  const icdCodes = {};
+  ['a','b','c','d','e','f','g','h','i','j','k','l'].forEach(l => {
+    const v = document.getElementById('cms-icd-'+l)?.value.trim();
+    if (v) icdCodes['icd10_'+l] = v;
+  });
+  const cptLines = [];
+  for (let n = 1; n <= 6; n++) {
+    const cpt = document.getElementById(`cms-sl${n}-cpt`)?.value.trim();
+    if (cpt) cptLines.push({ cpt, date: document.getElementById(`cms-sl${n}-date`)?.value, pos: document.getElementById(`cms-sl${n}-pos`)?.value, modifier: document.getElementById(`cms-sl${n}-mod`)?.value, diagPtr: document.getElementById(`cms-sl${n}-diag`)?.value, charge: document.getElementById(`cms-sl${n}-charge`)?.value, units: document.getElementById(`cms-sl${n}-units`)?.value });
+  }
+  try {
+    await db.collection('claims').add({
+      patientId: p.id,
+      campusId: currentUserProfile.campusId,
+      submittedByUid: currentUser.uid,
+      submittedByName: currentUserProfile?.displayName || currentUser.email,
+      patientName: `${p.last}, ${p.first}`,
+      mrn: p.mrn,
+      ...icdCodes,
+      serviceLines: cptLines,
+      totalCharge: document.getElementById('cms-total')?.value || '0.00',
+      claimStatus: status,
+      submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      gradedByUid: null,
+      gradeNote: null
+    });
+    toast(status === 'submitted' ? 'Claim submitted for review' : 'Draft saved');
+    renderBillingTab();
+  } catch(e) { toast('Error saving claim: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════
+// PHARMACY QUEUE
+// ═══════════════════════════════════════════
+let _allRxQueue = [];
+let _rxQueueFilter = 'all';
+
+async function loadPharmacyQueue() {
+  const tbody = document.getElementById('rxq-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">Loading...</td></tr>';
+  try {
+    const snap = await db.collection('prescriptions')
+      .where('campusId', '==', currentUserProfile.campusId).get();
+    _allRxQueue = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.orderedAt?.seconds || 0) - (a.orderedAt?.seconds || 0));
+    renderRxQueue();
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="11" style="color:var(--red);padding:16px">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function filterRxQueue(filter) {
+  _rxQueueFilter = filter;
+  ['all','ordered','verified','dispensed'].forEach(f => {
+    const btn = document.getElementById('rxq-btn-'+f);
+    if (btn) { btn.style.background = f===filter?'var(--accent-soft)':''; btn.style.borderColor = f===filter?'rgba(47,129,247,0.25)':''; btn.style.color = f===filter?'var(--accent-hover)':''; }
+  });
+  renderRxQueue();
+}
+
+function renderRxQueue() {
+  const tbody = document.getElementById('rxq-tbody');
+  if (!tbody) return;
+  const rows = _rxQueueFilter === 'all' ? _allRxQueue : _allRxQueue.filter(r => r.rxStatus === _rxQueueFilter);
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:24px">No prescriptions found</td></tr>'; return; }
+  const canFill = isInstructor() || userProgram() === 'pharmacy_tech';
+  tbody.innerHTML = rows.map(r => `<tr onclick="${canFill && (r.rxStatus==='ordered'||r.rxStatus==='verified') ? `openRxFillModal('${r.id}')` : 'void(0)'}">
+    <td style="font-weight:500">${r.patientName||r.patientId}</td>
+    <td style="font-family:var(--mono);font-size:11px">${r.mrn||'—'}</td>
+    <td><strong>${r.drug}</strong></td>
+    <td style="font-family:var(--mono)">${r.dose}</td>
+    <td style="font-size:11px;color:var(--text2);max-width:160px">${r.sig}</td>
+    <td>${r.route}</td>
+    <td style="font-family:var(--mono)">${r.refills ?? '—'}</td>
+    <td style="font-size:11px;color:var(--text2)">${r.prescriber||'—'}</td>
+    <td style="font-size:10px;font-family:var(--mono);color:var(--text3)">${fmtDT(r.orderedAt)}</td>
+    <td><span class="rx-status ${r.rxStatus}">${r.rxStatus}</span></td>
+    <td>${canFill && (r.rxStatus==='ordered'||r.rxStatus==='verified') ? `<button class="btn primary sm" onclick="event.stopPropagation();openRxFillModal('${r.id}')">Fill</button>` : ''}</td>
+  </tr>`).join('');
+}
+
+function openRxFillModal(rxId) {
+  const rx = _allRxQueue.find(r => r.id === rxId);
+  if (!rx) return;
+  document.getElementById('rxf-rx-id').value = rxId;
+  document.getElementById('rxf-rx-summary').innerHTML = `<strong>${rx.drug}</strong> ${rx.dose} ${rx.route}<br>Sig: ${rx.sig}<br>Qty: ${rx.qty||'—'} · Refills: ${rx.refills??'—'}<br>Prescriber: ${rx.prescriber||'—'}`;
+  document.getElementById('rxf-drug').value = rx.drug;
+  document.getElementById('rxf-qty').value = rx.qty || '';
+  document.getElementById('rxf-lot').value = '';
+  document.getElementById('rxf-note').value = '';
+  openM('modal-rx-fill');
+}
+
+async function saveRxFill() {
+  const rxId = document.getElementById('rxf-rx-id').value;
+  const drug = document.getElementById('rxf-drug').value.trim();
+  const qty = document.getElementById('rxf-qty').value.trim();
+  if (!drug || !qty) { toast('Verified drug and quantity are required', 'error'); return; }
+  const rx = _allRxQueue.find(r => r.id === rxId);
+  try {
+    await db.collection('rx_fills').add({
+      rxId,
+      patientId: rx?.patientId || '',
+      campusId: currentUserProfile.campusId,
+      filledByUid: currentUser.uid,
+      filledByName: currentUserProfile?.displayName || currentUser.email,
+      verifiedDrug: drug,
+      verifiedQty: qty,
+      lotNumber: document.getElementById('rxf-lot').value.trim() || null,
+      dispensingNote: document.getElementById('rxf-note').value.trim() || null,
+      filledAt: firebase.firestore.FieldValue.serverTimestamp(),
+      gradedByUid: null,
+      gradeNote: null
+    });
+    await db.collection('prescriptions').doc(rxId).update({ rxStatus: 'dispensed' });
+    closeM('modal-rx-fill');
+    toast('Prescription marked as dispensed');
+    loadPharmacyQueue();
+  } catch(e) { toast('Error saving fill: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════
+// GRADING QUEUE (Instructor)
+// ═══════════════════════════════════════════
+let _gradingTab = 'claims';
+
+function switchGradeTab(tab, el) {
+  _gradingTab = tab;
+  document.querySelectorAll('.grade-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  loadGradingQueues();
+}
+
+async function loadGradingQueues() {
+  const el = document.getElementById('grading-content');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px">Loading...</div>';
+  const campusId = currentUserProfile.campusId;
+  try {
+    if (_gradingTab === 'claims') {
+      const snap = await db.collection('claims').where('campusId','==',campusId).get();
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a,b) => (b.submittedAt?.seconds||0) - (a.submittedAt?.seconds||0));
+      document.getElementById('gc-claims-count').textContent = items.length;
+      if (!items.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏥</div>No claims submitted yet</div>'; return; }
+      el.innerHTML = items.map(c => `<div class="grade-card">
+        <div class="grade-card-head">
+          <div><div class="grade-card-student">🏥 ${c.submittedByName||'Unknown'}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">Patient: ${c.patientName||c.patientId} · ${c.mrn||''}</div>
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">${Object.entries(c).filter(([k])=>k.startsWith('icd10_')&&c[k]).map(([k,v])=>`<span class="badge blue" style="font-family:var(--mono)">${v}</span>`).join('')}</div>
+          ${c.serviceLines?.length ? `<div style="margin-top:6px;font-size:11px;color:var(--text2)">CPT: ${c.serviceLines.map(s=>s.cpt).join(', ')}</div>` : ''}
+          <div style="margin-top:4px;font-family:var(--mono);font-size:11px">Total: $${c.totalCharge||'0.00'} · <span class="badge ${c.claimStatus==='submitted'?'green':'yellow'}">${c.claimStatus}</span></div></div>
+          <div class="grade-card-time">${fmtDT(c.submittedAt)}</div>
+        </div>
+        ${c.gradedByUid ? `<div style="font-size:12px;color:var(--green)">✓ Graded ${c.gradeNote ? '· '+c.gradeNote : ''}</div>` : `<div class="grade-note-wrap">
+          <input type="text" id="gn-claim-${c.id}" placeholder="Grade note / feedback (optional)" value="${c.gradeNote||''}" />
+          <button class="btn primary sm" onclick="submitGrade('claims','${c.id}','gn-claim-${c.id}')">Save Grade</button>
+        </div>`}
+      </div>`).join('');
+    } else if (_gradingTab === 'fills') {
+      const snap = await db.collection('rx_fills').where('campusId','==',campusId).get();
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a,b) => (b.filledAt?.seconds||0) - (a.filledAt?.seconds||0));
+      document.getElementById('gc-fills-count').textContent = items.length;
+      if (!items.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">💊</div>No Rx fills submitted yet</div>'; return; }
+      el.innerHTML = items.map(f => `<div class="grade-card">
+        <div class="grade-card-head">
+          <div><div class="grade-card-student">💊 ${f.filledByName||'Unknown'}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">Drug: <strong>${f.verifiedDrug}</strong> · Qty: ${f.verifiedQty}</div>
+          ${f.lotNumber ? `<div style="font-size:11px;color:var(--text3)">Lot: ${f.lotNumber}</div>` : ''}
+          ${f.dispensingNote ? `<div style="font-size:11px;color:var(--text2);margin-top:4px">${f.dispensingNote}</div>` : ''}</div>
+          <div class="grade-card-time">${fmtDT(f.filledAt)}</div>
+        </div>
+        ${f.gradedByUid ? `<div style="font-size:12px;color:var(--green)">✓ Graded ${f.gradeNote ? '· '+f.gradeNote : ''}</div>` : `<div class="grade-note-wrap">
+          <input type="text" id="gn-fill-${f.id}" placeholder="Grade note / feedback (optional)" value="${f.gradeNote||''}" />
+          <button class="btn primary sm" onclick="submitGrade('rx_fills','${f.id}','gn-fill-${f.id}')">Save Grade</button>
+        </div>`}
+      </div>`).join('');
+    } else if (_gradingTab === 'visits') {
+      const snap = await db.collection('patients').where('campusId','==',campusId).where('visitStatus','==','complete').get();
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      document.getElementById('gc-visits-count').textContent = items.length;
+      if (!items.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No finalized visits yet</div>'; return; }
+      el.innerHTML = items.map(pt => `<div class="grade-card">
+        <div class="grade-card-head">
+          <div><div class="grade-card-student">📋 ${pt.last}, ${pt.first} <span style="font-family:var(--mono);font-size:11px;font-weight:400;color:var(--text3)">${pt.mrn}</span></div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">Finalized by: ${pt.finalizedBy||'—'}</div>
+          <div style="font-size:11px;color:var(--text3)">Vitals: ${(pt.vitals||[]).length} · Notes: ${(pt.notes||[]).length} · Meds: ${(pt.medications||[]).filter(m=>m.status==='Active').length} active</div></div>
+          <div class="grade-card-time">${fmtDT(pt.finalizedAt)}</div>
+        </div>
+      </div>`).join('');
+    }
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);padding:16px">Error loading grading queue: ${e.message}</div>`;
+  }
+}
+
+async function submitGrade(collection, docId, inputId) {
+  const note = document.getElementById(inputId)?.value.trim() || '';
+  try {
+    await db.collection(collection).doc(docId).update({
+      gradedByUid: currentUser.uid,
+      gradedByName: currentUserProfile?.displayName || currentUser.email,
+      gradeNote: note,
+      gradedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('Grade saved');
+    loadGradingQueues();
+  } catch(e) { toast('Error saving grade: ' + e.message, 'error'); }
+}
 
 async function toggleCampusStatus(id, currentStatus) {
   const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
