@@ -386,24 +386,15 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 
 /* ── CMS-1500 Billing tab ── */
 .cms-form { font-size: 12px; }
-.cms-section { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
-.cms-section-head { background: var(--surface3); padding: 7px 14px; font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
-.cms-field { display: flex; flex-direction: column; }
-.cms-field label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
-.cms-field input, .cms-field select { padding: 6px 9px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; color: var(--text); font-family: var(--font); }
-.cms-field input:focus, .cms-field select:focus { outline: none; border-color: var(--accent); }
-.cms-grid { display: grid; gap: 10px; padding: 12px; }
-.cms-grid.c2 { grid-template-columns: 1fr 1fr; }
-.cms-grid.c3 { grid-template-columns: 1fr 1fr 1fr; }
-.cms-grid.c4 { grid-template-columns: repeat(4,1fr); }
-.cms-grid.c6 { grid-template-columns: repeat(6,1fr); }
-.cms-icd-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 8px; padding: 12px; }
-.service-line-head { display: grid; grid-template-columns: 90px 60px 90px 90px 1fr 80px 80px; gap: 6px; padding: 6px 12px; background: var(--surface3); border-bottom: 1px solid var(--border); }
-.service-line-head span { font-size: 9px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
-.service-line-row { display: grid; grid-template-columns: 90px 60px 90px 90px 1fr 80px 80px; gap: 6px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); }
-.service-line-row:last-child { border-bottom: none; }
-.service-line-row input { padding: 5px 7px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; color: var(--text); font-family: var(--font); width: 100%; }
-.service-line-row input:focus { outline: none; border-color: var(--accent); }
+.cms-cell { padding: 7px 10px; border-right: 1px solid var(--border); }
+.cms-cell:last-child { border-right: none; }
+.cms-cell-label { font-size: 8px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; line-height: 1.3; }
+.cms-input { width: 100%; padding: 5px 7px; background: var(--surface); border: 1px solid var(--border2); border-radius: 3px; font-size: 12px; color: var(--text); font-family: var(--font); box-sizing: border-box; }
+.cms-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.cms-row { display: grid; border-bottom: 1px solid var(--border); }
+.cms-row:last-child { border-bottom: none; }
+.cms-sl-grid { display: grid; grid-template-columns: 86px 86px 34px 34px 110px 54px 80px 44px 44px 34px 90px; gap: 2px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--border); min-width: 760px; }
+.cms-sl-head { background: var(--surface3); font-size: 8px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.03em; }
 
 /* ── Grading Queue ── */
 .grade-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
@@ -3362,123 +3353,240 @@ async function renderBillingTab() {
   const p = currentPatient;
   const canSubmit = isInstructor() || userProgram() === 'billing_coding';
 
-  // Load existing claims
+  if (!p.visitStatus || p.visitStatus !== 'complete') {
+    el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">🔒</div><div style="font-size:14px;font-weight:600;color:var(--text2)">Visit Not Yet Finalized</div><div style="font-size:12px;margin-top:6px">The medical assisting student must finalize this visit before a claim can be submitted.</div></div>';
+    return;
+  }
+
   let existingClaims = [];
   try {
-    const snap = await db.collection('claims')
-      .where('patientId', '==', p.id).get();
-    const currentVisitId = p.visitId || null;
+    const snap = await db.collection('claims').where('patientId', '==', p.id).get();
+    const vid = p.visitId || null;
     existingClaims = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .filter(c => !currentVisitId || c.visitId === currentVisitId)
+      .filter(c => !vid || c.visitId === vid)
       .sort((a,b) => (b.submittedAt?.seconds||0) - (a.submittedAt?.seconds||0));
   } catch(e) { console.warn('Could not load claims:', e); }
 
-  const icdFields = ['A','B','C','D','E','F','G','H','I','J','K','L'].map((l,i) => `
-    <div class="cms-field"><label>${l}.</label><input type="text" id="cms-icd-${l.toLowerCase()}" placeholder="ICD-10" style="font-family:var(--mono);font-size:11px" /></div>`).join('');
+  const fmtDOB = d => { if(!d) return ''; const [y,m,day]=d.split('-'); return `${m}/${day}/${y}`; };
+  const sexM = (p.gender||p.sex||'')==='Male', sexF = (p.gender||p.sex||'')==='Female';
+  const G = (id,placeholder='',val='') => `<input type="text" class="cms-input" id="${id}" placeholder="${placeholder}" value="${val}" />`;
+  const R = (name,val,lbl,chk=false) => `<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap"><input type="radio" name="${name}" value="${val}" ${chk?'checked':''}> ${lbl}</label>`;
+  const cell = (label, content) => `<div class="cms-cell"><div class="cms-cell-label">${label}</div>${content}</div>`;
+  const row = (cols, content) => `<div class="cms-row" style="grid-template-columns:${cols}">${content}</div>`;
 
-  const serviceLines = [1,2,3,4,5,6].map(n => `
-    <div class="service-line-row">
-      <input type="text" id="cms-sl${n}-date" placeholder="MM/DD/YY" />
-      <input type="text" id="cms-sl${n}-pos" placeholder="11" />
-      <input type="text" id="cms-sl${n}-cpt" placeholder="CPT" style="font-family:var(--mono)" />
-      <input type="text" id="cms-sl${n}-mod" placeholder="Mod" style="font-family:var(--mono)" />
-      <input type="text" id="cms-sl${n}-diag" placeholder="A,B,C" />
-      <input type="text" id="cms-sl${n}-charge" placeholder="$0.00" />
-      <input type="text" id="cms-sl${n}-units" placeholder="1" />
-    </div>`).join('');
+  const icdInputs = ['A','B','C','D','E','F','G','H','I','J','K','L'].map(l =>
+    `<div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">${l}.</div>${G('cms-icd-'+l.toLowerCase(),'ICD-10')}</div>`).join('');
+
+  const slHead = `<div class="cms-sl-grid cms-sl-head">
+    <span>24A DATE FROM</span><span>DATE TO</span><span>B POS</span><span>C EMG</span>
+    <span>D CPT / MOD</span><span>E DIAG PTR</span><span>F $ CHARGES</span>
+    <span>G DAYS</span><span>H EPSDT</span><span>I ID</span><span>J RENDER NPI</span>
+  </div>`;
+  const slRows = [1,2,3,4,5,6].map(n => `<div class="cms-sl-grid">
+    ${G(`cms-sl${n}-from`,'MM/DD/YY')} ${G(`cms-sl${n}-to`,'MM/DD/YY')}
+    ${G(`cms-sl${n}-pos`,'11')} ${G(`cms-sl${n}-emg`,'N')}
+    ${G(`cms-sl${n}-cpt`,'CPT | Mod','',)} ${G(`cms-sl${n}-diag`,'A')}
+    ${G(`cms-sl${n}-charge`,'$0.00')} ${G(`cms-sl${n}-units`,'1')}
+    ${G(`cms-sl${n}-epsdt`,'')} ${G(`cms-sl${n}-idq`,'')} ${G(`cms-sl${n}-npi`,'NPI')}
+  </div>`).join('');
 
   const claimsHistory = !existingClaims.length ? '' : `
     <div class="sc" style="margin-bottom:14px">
-      <div class="sc-head"><h3>📄 Submitted Claims</h3></div>
-      <div class="sc-body"><table class="dt"><thead><tr><th>Submitted</th><th>Status</th><th>Total Charge</th><th>Graded By</th></tr></thead><tbody>
+      <div class="sc-head"><h3>📄 Submitted Claims — Visit #${p.visitNumber||1}</h3></div>
+      <div class="sc-body"><table class="dt"><thead><tr><th>Submitted</th><th>Status</th><th>Total</th><th>ICD Codes</th><th>Graded</th></tr></thead><tbody>
         ${existingClaims.map(c => `<tr>
           <td style="font-size:11px;font-family:var(--mono)">${fmtDT(c.submittedAt)}</td>
           <td><span class="badge ${c.claimStatus==='submitted'?'green':'yellow'}">${c.claimStatus}</span></td>
           <td style="font-family:var(--mono)">$${c.totalCharge||'0.00'}</td>
-          <td style="font-size:11px;color:var(--text2)">${c.gradedByUid ? '✓ Graded' : '—'} ${c.gradeNote ? `<em style="color:var(--text3)">${c.gradeNote}</em>` : ''}</td>
+          <td style="font-size:11px">${Object.entries(c).filter(([k])=>k.startsWith('icd10_')&&c[k]).map(([,v])=>`<span style="font-family:var(--mono);background:var(--surface3);padding:1px 5px;border-radius:3px;margin-right:3px">${v}</span>`).join('')||'—'}</td>
+          <td style="font-size:11px;color:var(--text2)">${c.gradedByUid?'✓ Graded'+(c.gradeNote?' · '+c.gradeNote:''):'—'}</td>
         </tr>`).join('')}
       </tbody></table></div>
     </div>`;
 
-  el.innerHTML = `
-    ${!p.visitStatus || p.visitStatus !== 'complete'
-      ? '<div style="padding:32px;text-align:center;color:var(--text3)"><div style="font-size:28px;margin-bottom:8px">🔒</div><div style="font-size:14px;font-weight:600;color:var(--text2)">Visit Not Yet Finalized</div><div style="font-size:12px;margin-top:6px">The medical assisting student must finalize this visit before a claim can be submitted.</div></div>'
-      : `${claimsHistory}
-        <div class="sc cms-form">
-          <div class="sc-head"><h3>📄 CMS-1500 Claim Form</h3></div>
-          <div class="sc-body">
-            <div class="cms-section">
-              <div class="cms-section-head">Patient Information (Fields 2, 3, 5, 26)</div>
-              <div class="cms-grid c2">
-                <div class="cms-field"><label>2. Patient Name</label><input type="text" id="cms-pt-name" value="${p.last||''}, ${p.first||''}" /></div>
-                <div class="cms-field"><label>26. Account Number (MRN)</label><input type="text" id="cms-mrn" value="${p.mrn||''}" style="font-family:var(--mono)" /></div>
-              </div>
-              <div class="cms-grid c3">
-                <div class="cms-field"><label>3. Date of Birth</label><input type="text" id="cms-dob" value="${fmtDate(p.dob)}" /></div>
-                <div class="cms-field"><label>3. Sex</label><select id="cms-sex"><option ${(p.gender||p.sex)==='Male'?'selected':''}>Male</option><option ${(p.gender||p.sex)==='Female'?'selected':''}>Female</option><option value="">Unknown</option></select></div>
-                <div class="cms-field"><label>1. Insurance Type</label><select id="cms-ins-type"><option>Private</option><option>Medicare</option><option>Medicaid</option><option>TRICARE</option><option>Other</option></select></div>
-              </div>
-              <div class="cms-grid c2">
-                <div class="cms-field"><label>5. Patient Address</label><input type="text" id="cms-addr" value="${p.address||''}" /></div>
-                <div class="cms-field"><label>11. Insurance ID</label><input type="text" id="cms-ins-id" placeholder="Member ID" /></div>
-              </div>
-            </div>
-            <div class="cms-section">
-              <div class="cms-section-head">Diagnosis Codes — Field 21 (ICD-10 A through L)</div>
-              <div class="cms-icd-grid">${icdFields}</div>
-            </div>
-            <div class="cms-section">
-              <div class="cms-section-head">Service Lines — Field 24</div>
-              <div class="service-line-head">
-                <span>Date of Service</span><span>POS</span><span>CPT Code</span><span>Modifier</span><span>Diag Ptr</span><span>Charge</span><span>Units</span>
-              </div>
-              ${serviceLines}
-            </div>
-            <div class="cms-section">
-              <div class="cms-section-head">Provider / Billing Info (Fields 25, 31, 33)</div>
-              <div class="cms-grid c3">
-                <div class="cms-field"><label>25. Federal Tax ID</label><input type="text" id="cms-taxid" placeholder="XX-XXXXXXX" /></div>
-                <div class="cms-field"><label>31. Signature / Date</label><input type="text" id="cms-sig" value="${currentUserProfile?.displayName||''}" /></div>
-                <div class="cms-field"><label>Total Charge</label><input type="text" id="cms-total" placeholder="$0.00" /></div>
-              </div>
-            </div>
-            ${canSubmit ? `<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
-              <button class="btn" onclick="saveClaim('draft')">Save Draft</button>
-              <button class="btn primary" onclick="saveClaim('submitted')">Submit Claim</button>
-            </div>` : ''}
-          </div>
-        </div>`}`;
+  const submitBtns = canSubmit ? `<div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 14px;border-top:1px solid var(--border);background:var(--surface2)">
+    <button class="btn" onclick="saveClaim('draft')">Save Draft</button>
+    <button class="btn primary" onclick="saveClaim('submitted')">Submit Claim</button>
+  </div>` : '';
+
+  el.innerHTML = `${claimsHistory}
+  <div class="sc cms-form" style="overflow:hidden">
+    <div class="sc-head" style="display:flex;justify-content:space-between;align-items:center">
+      <div><h3>📄 CMS-1500 Health Insurance Claim Form</h3><div style="font-size:10px;color:var(--text3);margin-top:1px">APPROVED BY NATIONAL UNIFORM CLAIM COMMITTEE (NUCC) 02/12 &nbsp;·&nbsp; Visit #${p.visitNumber||1}</div></div>
+      ${canSubmit ? `<div style="display:flex;gap:8px"><button class="btn" onclick="saveClaim('draft')">Save Draft</button><button class="btn primary" onclick="saveClaim('submitted')">Submit Claim</button></div>` : ''}
+    </div>
+
+    <!-- FIELD 1: Insurance type -->
+    <div style="padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface2)">
+      <div class="cms-cell-label" style="margin-bottom:6px">1. Type of Health Insurance</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        ${['Medicare','Medicaid','TRICARE','CHAMPVA','Group Health Plan','FECA / BLK LUNG','Other'].map(t=>R('cms-ins-type',t,t)).join('')}
+      </div>
+    </div>
+    <!-- FIELD 1a + 2 + 3 + 4 -->
+    ${row('1fr 2fr 100px 100px 2fr', `
+      ${cell('1a. Insured\'s ID Number', G('cms-ins-id','Policy / Member ID'))}
+      ${cell('2. Patient\'s Name (Last, First, MI)', G('cms-pt-name','',`${p.last||''}, ${p.first||''}`))}
+      ${cell('3. Patient DOB (MM/DD/YYYY)', G('cms-pt-dob','MM/DD/YYYY',fmtDOB(p.dob)))}
+      ${cell('Sex', `<div style="display:flex;gap:8px;padding:4px 0">${R('cms-sex','M','M',sexM)}${R('cms-sex','F','F',sexF)}</div>`)}
+      ${cell('4. Insured\'s Name (Last, First, MI)', G('cms-ins-name','If same, enter SAME'))}
+    `)}
+    <!-- FIELDS 5+6 / 7 -->
+    ${row('1fr 1fr', `
+      ${cell('5. Patient\'s Address — Street', G('cms-pt-addr','',p.address||''))}
+      ${cell('7. Insured\'s Address — Street', G('cms-ins-addr','If same, enter SAME'))}
+    `)}
+    ${row('1fr 180px 1fr', `
+      ${cell('5. City, State, ZIP', G('cms-pt-city','City, ST  ZIP'))}
+      ${cell('6. Patient Relationship to Insured', `<div style="display:flex;gap:8px;flex-wrap:wrap;padding:3px 0">${['Self','Spouse','Child','Other'].map((r,i)=>R('cms-rel',r,r,i===0)).join('')}</div>`)}
+      ${cell('7. City, State, ZIP', G('cms-ins-city','City, ST  ZIP'))}
+    `)}
+    ${row('1fr 1fr', `
+      ${cell('5. Telephone (include area code)', G('cms-pt-phone','( ) -',p.phone||''))}
+      ${cell('7. Insured\'s Telephone', G('cms-ins-phone','( ) -'))}
+    `)}
+    <!-- FIELDS 8 / 9 / 10 / 11 -->
+    ${row('1fr 1fr 1fr', `
+      ${cell('8. Reserved for NUCC Use', G('cms-nucc8',''))}
+      ${cell('9. Other Insured\'s Name', G('cms-other-ins','Last, First, MI'))}
+      ${cell('10a. Condition Related to Employment?', `<div style="display:flex;gap:10px;padding:3px 0">${R('cms-employ','Y','Yes')}${R('cms-employ','N','No',true)}</div>`)}
+    `)}
+    ${row('1fr 1fr 1fr', `
+      ${cell('11. Insured\'s Policy Group or FECA #', G('cms-ins-policy',''))}
+      ${cell('9a. Other Insured\'s Policy / Group #', G('cms-other-policy',''))}
+      ${cell('10b. Auto Accident? / State', `<div style="display:flex;gap:8px;align-items:center;padding:3px 0">${R('cms-auto','Y','Yes')}${R('cms-auto','N','No',true)}${G('cms-auto-state','ST')}</div>`)}
+    `)}
+    ${row('1fr 1fr 1fr', `
+      ${cell('11a. Insured\'s Date of Birth / Sex', `<div style="display:flex;gap:6px;align-items:center">${G('cms-ins-dob','MM/DD/YYYY')} ${R('cms-ins-sex','M','M')} ${R('cms-ins-sex','F','F')}</div>`)}
+      ${cell('9b. Reserved for NUCC Use', G('cms-nucc9b',''))}
+      ${cell('10c. Other Accident?', `<div style="display:flex;gap:10px;padding:3px 0">${R('cms-other-acc','Y','Yes')}${R('cms-other-acc','N','No',true)}</div>`)}
+    `)}
+    ${row('1fr 1fr 1fr', `
+      ${cell('11b. Other Claim ID (Designated by NUCC)', G('cms-other-claim-id',''))}
+      ${cell('9c. Reserved for NUCC Use', G('cms-nucc9c',''))}
+      ${cell('10d. Claim Codes (Designated by NUCC)', G('cms-claim-codes',''))}
+    `)}
+    ${row('1fr 1fr 1fr', `
+      ${cell('11c. Insurance Plan Name or Program Name', G('cms-ins-plan','',p.insurance||''))}
+      ${cell('9d. Insurance Plan Name or Program Name', G('cms-other-plan-name',''))}
+      ${cell('11d. Another Health Benefit Plan?', `<div style="display:flex;gap:10px;padding:3px 0">${R('cms-another-plan','Y','Yes')}${R('cms-another-plan','N','No',true)}</div>`)}
+    `)}
+    <!-- FIELDS 12/13 -->
+    ${row('1fr 1fr', `
+      ${cell('12. Patient\'s or Authorized Person\'s Signature / Date', `<div style="display:flex;gap:6px">${G('cms-pt-sig','','Signature on File')}${G('cms-pt-sig-date','Date')}</div>`)}
+      ${cell('13. Insured\'s or Authorized Person\'s Signature', G('cms-ins-sig','','Signature on File'))}
+    `)}
+    <!-- FIELDS 14/15/16 -->
+    ${row('1fr 1fr 1fr', `
+      ${cell('14. Date of Current Illness / Injury / LMP', `<div style="display:flex;gap:4px">${G('cms-illness-date','MM/DD/YYYY')}<select class="cms-input" id="cms-illness-qual" style="width:70px"><option value="431">Onset</option><option value="484">LMP</option><option value="453">Accident</option></select></div>`)}
+      ${cell('15. Other Date / Qualifier', `<div style="display:flex;gap:4px"><select class="cms-input" id="cms-other-date-qual" style="width:70px"><option value="">Qual</option><option value="454">Initial</option><option value="304">Last Seen</option><option value="455">Last X-Ray</option></select>${G('cms-other-date','MM/DD/YYYY')}</div>`)}
+      ${cell('16. Dates Patient Unable to Work', `<div style="display:flex;gap:4px;align-items:center"><span style="font-size:10px;color:var(--text3)">From</span>${G('cms-unable-from','MM/DD/YYYY')}<span style="font-size:10px;color:var(--text3)">To</span>${G('cms-unable-to','MM/DD/YYYY')}</div>`)}
+    `)}
+    <!-- FIELDS 17/18/19/20 -->
+    ${row('2fr 1fr 1fr', `
+      ${cell('17. Name of Referring Provider / Other Source', `<div style="display:flex;gap:4px"><select class="cms-input" id="cms-ref-qual" style="width:46px"><option>DN</option><option>DQ</option><option>DK</option></select>${G('cms-ref-name','Last, First')}</div>`)}
+      ${cell('17a. Other ID &nbsp; 17b. Referring NPI', `<div style="display:flex;gap:4px">${G('cms-ref-other-id','17a')}${G('cms-ref-npi','NPI 17b')}</div>`)}
+      ${cell('18. Hospitalization Dates', `<div style="display:flex;gap:4px;align-items:center"><span style="font-size:10px;color:var(--text3)">From</span>${G('cms-hosp-from','MM/DD/YY')}<span style="font-size:10px;color:var(--text3)">To</span>${G('cms-hosp-to','MM/DD/YY')}</div>`)}
+    `)}
+    ${row('2fr 1fr', `
+      ${cell('19. Additional Claim Information (Designated by NUCC)', G('cms-add-info',''))}
+      ${cell('20. Outside Lab? / $ Charges', `<div style="display:flex;gap:8px;align-items:center;padding:2px 0">${R('cms-outside-lab','Y','Yes')}${R('cms-outside-lab','N','No',true)}${G('cms-lab-charges','$0.00')}</div>`)}
+    `)}
+    <!-- FIELD 21: ICD Indicator + Diagnosis Codes A-L -->
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border)">
+      <div class="cms-cell-label">21. Diagnosis or Nature of Illness or Injury — ICD Indicator: <input type="text" id="cms-icd-ind" style="width:22px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;font-family:var(--mono);font-size:11px;background:var(--surface)" value="0" title="0 = ICD-10-CM  |  9 = ICD-9-CM" /></div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:6px">${icdInputs}</div>
+    </div>
+    <!-- FIELDS 22/23 -->
+    ${row('1fr 1fr', `
+      ${cell('22. Resubmission Code &nbsp;/&nbsp; Original Reference Number', `<div style="display:flex;gap:4px">${G('cms-resub-code','Code',)}<div style="flex:1">${G('cms-orig-ref','Original Ref No.')}</div></div>`)}
+      ${cell('23. Prior Authorization Number', G('cms-prior-auth','',''))}
+    `)}
+    <!-- FIELD 24: Service Lines -->
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="padding:6px 10px;background:var(--surface3);border-bottom:1px solid var(--border)"><span class="cms-cell-label">24. Procedures, Services, or Supplies</span></div>
+      <div style="overflow-x:auto">${slHead}${slRows}</div>
+    </div>
+    <!-- FIELDS 25-30 -->
+    ${row('1fr 1fr 80px 1fr 1fr 1fr', `
+      ${cell('25. Federal Tax ID / Type', `<div style="display:flex;gap:4px;align-items:center">${G('cms-taxid','XX-XXXXXXX')}${R('cms-taxid-type','SSN','SSN')}${R('cms-taxid-type','EIN','EIN',true)}</div>`)}
+      ${cell('26. Patient Account No. (MRN)', G('cms-acct-num','',p.mrn||''))}
+      ${cell('27. Accept Assignment?', `<div style="display:flex;gap:6px;padding:3px 0">${R('cms-assignment','Y','Y',true)}${R('cms-assignment','N','N')}</div>`)}
+      ${cell('28. Total Charge', G('cms-total-charge','$0.00'))}
+      ${cell('29. Amount Paid', G('cms-amount-paid','$0.00'))}
+      ${cell('30. Reserved for NUCC Use', G('cms-nucc30',''))}
+    `)}
+    <!-- FIELDS 31-33 -->
+    ${row('1fr 1fr', `
+      ${cell('31. Signature of Physician / Supplier (Degrees or Credentials) / Date', `<div style="display:flex;gap:4px">${G('cms-phys-sig','',''+currentUserProfile?.displayName)}${G('cms-phys-sig-date','Date',''+today())}</div>`)}
+      ${cell('32. Service Facility Location Information', `${G('cms-facility-name','Facility name')}<div style="margin-top:4px">${G('cms-facility-addr','Address, City, State, ZIP')}</div>`)}
+    `)}
+    ${row('1fr 1fr 1fr', `
+      ${cell('32a. NPI &nbsp; / &nbsp; 32b. Other ID', `<div style="display:flex;gap:4px">${G('cms-facility-npi','NPI')}${G('cms-facility-other-id','Other ID')}</div>`)}
+      ${cell('33. Billing Provider Info &amp; Phone', `${G('cms-billing-name','Provider / Practice name')}<div style="margin-top:4px">${G('cms-billing-phone','Phone')}</div>`)}
+      ${cell('33a. NPI &nbsp; / &nbsp; 33b. Other ID', `<div style="display:flex;gap:4px">${G('cms-billing-npi','NPI')}${G('cms-billing-other-id','Other ID')}</div>`)}
+    `)}
+    ${submitBtns}
+  </div>`;
+}
+
+function getClaimFormData() {
+  const g = id => document.getElementById(id)?.value?.trim() || '';
+  const r = name => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+  const icd = {};
+  ['a','b','c','d','e','f','g','h','i','j','k','l'].forEach(l => { const v=g('cms-icd-'+l); if(v) icd['icd10_'+l]=v; });
+  const serviceLines = [1,2,3,4,5,6].map(n => ({
+    from: g(`cms-sl${n}-from`), to: g(`cms-sl${n}-to`), pos: g(`cms-sl${n}-pos`),
+    emg: g(`cms-sl${n}-emg`), cpt: g(`cms-sl${n}-cpt`), diagPtr: g(`cms-sl${n}-diag`),
+    charge: g(`cms-sl${n}-charge`), units: g(`cms-sl${n}-units`),
+    epsdt: g(`cms-sl${n}-epsdt`), idQual: g(`cms-sl${n}-idq`), renderNpi: g(`cms-sl${n}-npi`)
+  })).filter(s => s.cpt);
+  return {
+    insType: r('cms-ins-type'), insId: g('cms-ins-id'),
+    ptName: g('cms-pt-name'), ptDob: g('cms-pt-dob'), ptSex: r('cms-sex'),
+    insName: g('cms-ins-name'), ptAddr: g('cms-pt-addr'), ptCity: g('cms-pt-city'),
+    ptPhone: g('cms-pt-phone'), ptRel: r('cms-rel'),
+    insAddr: g('cms-ins-addr'), insCity: g('cms-ins-city'), insPhone: g('cms-ins-phone'),
+    insPolicy: g('cms-ins-policy'), insPlan: g('cms-ins-plan'), insDob: g('cms-ins-dob'), insSex: r('cms-ins-sex'),
+    otherIns: g('cms-other-ins'), otherPolicy: g('cms-other-policy'), otherPlan: g('cms-other-plan-name'),
+    otherClaimId: g('cms-other-claim-id'), anotherPlan: r('cms-another-plan'),
+    condEmploy: r('cms-employ'), condAuto: r('cms-auto'), autoState: g('cms-auto-state'),
+    condOther: r('cms-other-acc'), claimCodes: g('cms-claim-codes'),
+    ptSig: g('cms-pt-sig'), ptSigDate: g('cms-pt-sig-date'), insSig: g('cms-ins-sig'),
+    illnessDate: g('cms-illness-date'), illnessQual: g('cms-illness-qual'),
+    otherDate: g('cms-other-date'), otherDateQual: g('cms-other-date-qual'),
+    unableFrom: g('cms-unable-from'), unableTo: g('cms-unable-to'),
+    refName: g('cms-ref-name'), refQual: g('cms-ref-qual'), refOtherId: g('cms-ref-other-id'), refNpi: g('cms-ref-npi'),
+    hospFrom: g('cms-hosp-from'), hospTo: g('cms-hosp-to'),
+    addInfo: g('cms-add-info'), outsideLab: r('cms-outside-lab'), labCharges: g('cms-lab-charges'),
+    icdIndicator: g('cms-icd-ind'), ...icd,
+    resubCode: g('cms-resub-code'), origRef: g('cms-orig-ref'), priorAuth: g('cms-prior-auth'),
+    serviceLines,
+    taxId: g('cms-taxid'), taxIdType: r('cms-taxid-type'),
+    acctNum: g('cms-acct-num'), acceptAssign: r('cms-assignment'),
+    totalCharge: g('cms-total-charge'), amountPaid: g('cms-amount-paid'),
+    physSig: g('cms-phys-sig'), physSigDate: g('cms-phys-sig-date'),
+    facilityName: g('cms-facility-name'), facilityAddr: g('cms-facility-addr'),
+    facilityNpi: g('cms-facility-npi'), facilityOtherId: g('cms-facility-other-id'),
+    billingName: g('cms-billing-name'), billingPhone: g('cms-billing-phone'),
+    billingNpi: g('cms-billing-npi'), billingOtherId: g('cms-billing-other-id')
+  };
 }
 
 async function saveClaim(status) {
   const p = currentPatient;
-  const icdCodes = {};
-  ['a','b','c','d','e','f','g','h','i','j','k','l'].forEach(l => {
-    const v = document.getElementById('cms-icd-'+l)?.value.trim();
-    if (v) icdCodes['icd10_'+l] = v;
-  });
-  const cptLines = [];
-  for (let n = 1; n <= 6; n++) {
-    const cpt = document.getElementById(`cms-sl${n}-cpt`)?.value.trim();
-    if (cpt) cptLines.push({ cpt, date: document.getElementById(`cms-sl${n}-date`)?.value, pos: document.getElementById(`cms-sl${n}-pos`)?.value, modifier: document.getElementById(`cms-sl${n}-mod`)?.value, diagPtr: document.getElementById(`cms-sl${n}-diag`)?.value, charge: document.getElementById(`cms-sl${n}-charge`)?.value, units: document.getElementById(`cms-sl${n}-units`)?.value });
-  }
+  const data = getClaimFormData();
   try {
     await db.collection('claims').add({
-      patientId: p.id,
-      visitId: p.visitId || null,
-      visitNumber: p.visitNumber || 1,
+      patientId: p.id, visitId: p.visitId||null, visitNumber: p.visitNumber||1,
       campusId: currentUserProfile.campusId,
       submittedByUid: currentUser.uid,
       submittedByName: currentUserProfile?.displayName || currentUser.email,
-      patientName: `${p.last}, ${p.first}`,
-      mrn: p.mrn,
-      ...icdCodes,
-      serviceLines: cptLines,
-      totalCharge: document.getElementById('cms-total')?.value || '0.00',
+      patientName: `${p.last}, ${p.first}`, mrn: p.mrn,
+      ...data,
       claimStatus: status,
       submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      gradedByUid: null,
-      gradeNote: null
+      gradedByUid: null, gradeNote: null
     });
     toast(status === 'submitted' ? 'Claim submitted for review' : 'Draft saved');
     renderBillingTab();
