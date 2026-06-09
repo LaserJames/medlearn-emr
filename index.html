@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <style>
 :root {
   --bg: #ffffff; --surface: #f8f9fa; --surface2: #f1f3f5; --surface3: #e9ecef; --surface4: #dee2e6;
@@ -449,6 +450,15 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .appt-booked-name { font-size: 13px; font-weight: 600; }
 .appt-booked-cc { font-size: 11px; color: var(--text2); margin-top: 1px; }
 .appt-cancelled { opacity: 0.45; }
+
+/* ── Patient Labels ── */
+.label-preview-wrap { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; display: inline-flex; gap: 14px; flex-wrap: wrap; }
+.label-card { width: 2.5in; background: #fff; border: 1px solid #bbb; border-radius: 4px; padding: 7px 9px; font-family: Arial, Helvetica, sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 1px; }
+.label-pt-name { font-size: 10.5pt; font-weight: 700; color: #000; line-height: 1.2; letter-spacing: 0.01em; }
+.label-pt-info { font-size: 7.5pt; color: #222; }
+.label-pt-date { font-size: 7.5pt; color: #222; }
+.label-barcode-svg { width: 100%; height: 30px; display: block; margin: 2px 0 1px; }
+.label-pt-mrn { font-size: 7pt; font-family: 'Courier New', monospace; text-align: center; color: #000; letter-spacing: 0.08em; }
 </style>
 </head>
 <body>
@@ -630,6 +640,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="c-tab" data-tab="vision">👁 Vision</div>
           <div class="c-tab" id="tab-btn-rx" data-tab="rx" style="display:none">📋 Rx Orders <span class="tc" id="tc-rx">0</span></div>
           <div class="c-tab" id="tab-btn-billing" data-tab="billing" style="display:none">🏥 Billing</div>
+          <div class="c-tab" id="tab-btn-labels" data-tab="labels" style="display:none">🏷 Labels</div>
         </div>
         <div class="chart-body" id="chart-body">
           <div class="tab-content active" id="tab-overview"></div>
@@ -645,6 +656,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="tab-content" id="tab-vision"></div>
           <div class="tab-content" id="tab-rx"></div>
           <div class="tab-content" id="tab-billing"></div>
+          <div class="tab-content" id="tab-labels"></div>
         </div>
       </div>
     </div>
@@ -1623,6 +1635,7 @@ document.querySelectorAll('.c-tab').forEach(t => t.addEventListener('click', () 
   setTab(t.dataset.tab);
   if (t.dataset.tab === 'rx') renderRxTab();
   if (t.dataset.tab === 'billing') renderBillingTab();
+  if (t.dataset.tab === 'labels') renderLabelsTab();
 }));
 function setTab(name) {
   document.querySelectorAll('.c-tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
@@ -1641,6 +1654,8 @@ function renderAllTabs() {
   if (rxBtn && rxBtn.style.display !== 'none') renderRxTab();
   const billingBtn = document.getElementById('tab-btn-billing');
   if (billingBtn && billingBtn.style.display !== 'none') renderBillingTab();
+  const labelsBtn = document.getElementById('tab-btn-labels');
+  if (labelsBtn && labelsBtn.style.display !== 'none') renderLabelsTab();
 }
 
 // ═══════════════════════════════════════════
@@ -3297,10 +3312,12 @@ function applyProgramVisibility() {
   if (isInstructor()) {
     showTab('rx', true);
     showTab('billing', visitComplete);
+    showTab('labels', true);
     if (finalizeBtn) setFinalizeBtnState(finalizeBtn, visitComplete);
   } else if (program === 'medical_assisting') {
     showTab('rx', true);
     showTab('billing', false);
+    showTab('labels', true);
     if (finalizeBtn) setFinalizeBtnState(finalizeBtn, visitComplete);
   } else if (program === 'billing_coding') {
     // Read-only full chart + billing tab when visit complete
@@ -3900,6 +3917,78 @@ async function submitGrade(collection, docId, inputId) {
     toast('Grade saved');
     loadGradingQueues();
   } catch(e) { toast('Error saving grade: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════
+// PATIENT LABELS
+// ═══════════════════════════════════════════
+function renderLabelsTab() {
+  const el = document.getElementById('tab-labels');
+  const p = currentPatient;
+  if (!el || !p) return;
+  const todayLabel = new Date().toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
+  el.innerHTML = `
+    <div class="sc">
+      <div class="sc-head"><h3>🏷 Specimen Labels</h3></div>
+      <div class="sc-body">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:18px">Print barcode labels for blood collection tubes. Labels include the patient's name, DOB, MRN, collection date, and a scannable Code 128 barcode.</p>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:13px;font-weight:600;color:var(--text2)">Number of labels:</label>
+            <input type="number" id="label-count" value="4" min="1" max="20"
+              style="width:64px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:var(--mono);text-align:center;background:var(--surface2);color:var(--text)"
+              onchange="renderLabelsTab()" />
+          </div>
+          <button class="btn primary" onclick="printLabels()">🖨 Print Labels</button>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Preview</div>
+        <div class="label-preview-wrap">
+          <div class="label-card">
+            <div class="label-pt-name">${(p.last||'').toUpperCase()}, ${p.first||''}</div>
+            <div class="label-pt-info">DOB: ${fmtDate(p.dob)||'—'} &nbsp;·&nbsp; ${calcAge(p.dob)}y &nbsp;·&nbsp; ${p.gender||p.sex||'—'}</div>
+            <div class="label-pt-date">Date: ${todayLabel}</div>
+            <svg id="preview-barcode-svg" class="label-barcode-svg"></svg>
+            <div class="label-pt-mrn">${p.mrn||''}</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:10px">💡 Labels print 4 per row. Use Avery 5160 or similar 1" × 2⅝" label stock for blood tube labels.</div>
+      </div>
+    </div>`;
+  requestAnimationFrame(() => {
+    const svg = document.getElementById('preview-barcode-svg');
+    if (svg && typeof JsBarcode !== 'undefined' && p.mrn) {
+      try { JsBarcode(svg, p.mrn, {format:'CODE128',width:1.5,height:26,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'}); }
+      catch(e) { svg.style.display='none'; }
+    }
+  });
+}
+
+function printLabels() {
+  const p = currentPatient;
+  if (!p) return;
+  const count = Math.min(20, Math.max(1, parseInt(document.getElementById('label-count')?.value)||4));
+  const name  = `${(p.last||'').toUpperCase()}, ${p.first||''}`;
+  const dob   = fmtDate(p.dob)||'—';
+  const age   = calcAge(p.dob);
+  const sex   = p.gender||p.sex||'—';
+  const mrn   = p.mrn||'';
+  const dateStr = new Date().toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
+  const oneLbl = `<div class="pt-label"><div class="lbl-name">${name}</div><div class="lbl-info">DOB: ${dob} &nbsp;·&nbsp; ${age}y &nbsp;·&nbsp; ${sex}</div><div class="lbl-date">Date: ${dateStr}</div><svg class="lbl-bc" data-mrn="${mrn}"></svg><div class="lbl-mrn">${mrn}</div></div>`;
+  const pw = window.open('','_blank','width=860,height=680');
+  if (!pw) { toast('Allow pop-ups in your browser to print labels', 'error'); return; }
+  pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Labels — ${name}</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;background:#fff;padding:.25in}
+h4{font-size:10pt;margin-bottom:.15in;color:#666}.grid{display:flex;flex-wrap:wrap;gap:.1in}
+.pt-label{width:2.5in;height:1.25in;border:1px solid #aaa;border-radius:3px;padding:6px 8px;display:flex;flex-direction:column;justify-content:space-between;background:#fff;page-break-inside:avoid}
+.lbl-name{font-size:10.5pt;font-weight:700;color:#000;line-height:1.2}.lbl-info,.lbl-date{font-size:7.5pt;color:#222;line-height:1.3}
+.lbl-bc{width:100%;height:28px;display:block}.lbl-mrn{font-size:7pt;font-family:'Courier New',monospace;text-align:center;color:#000;letter-spacing:.06em}
+@media print{body{padding:.1in}@page{size:letter portrait;margin:.25in}h4{display:none}}</style></head>
+<body><h4>Labels — ${name} &nbsp;|&nbsp; ${mrn} &nbsp;|&nbsp; ${count} label${count!==1?'s':''} &nbsp;|&nbsp; <a href="#" onclick="window.print();return false">🖨 Print</a></h4>
+<div class="grid">${Array(count).fill(oneLbl).join('')}</div>
+<script>window.addEventListener('load',function(){document.querySelectorAll('.lbl-bc').forEach(function(s){var m=s.getAttribute('data-mrn');if(m&&typeof JsBarcode!=='undefined'){try{JsBarcode(s,m,{format:'CODE128',width:1.5,height:24,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'});}catch(e){}}});setTimeout(function(){window.print();},700);});<\/script>
+</body></html>`);
+  pw.document.close();
 }
 
 // ═══════════════════════════════════════════
