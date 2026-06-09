@@ -407,6 +407,48 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .grade-note-wrap { display: flex; gap: 8px; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 .grade-note-wrap input { flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font-family: var(--font); font-size: 12px; color: var(--text); }
 .grade-note-wrap input:focus { outline: none; border-color: var(--accent); }
+
+/* ── Appointment Calendar ── */
+#page-calendar { overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+.cal-wrap { display: grid; grid-template-columns: 276px 1fr; gap: 20px; padding: 0 28px 28px; align-items: start; }
+.cal-month-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.cal-month-head { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+.cal-month-title { font-size: 13px; font-weight: 700; }
+.cal-nav-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); width: 28px; height: 28px; cursor: pointer; font-size: 14px; color: var(--text2); display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+.cal-nav-btn:hover { background: var(--surface3); }
+.cal-dow-row { display: grid; grid-template-columns: repeat(7,1fr); border-bottom: 1px solid var(--border); }
+.cal-dow { text-align: center; padding: 6px 0; font-size: 9px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+.cal-days { display: grid; grid-template-columns: repeat(7,1fr); padding: 4px; gap: 2px; }
+.cal-day { text-align: center; padding: 5px 2px; cursor: pointer; font-size: 12px; border-radius: 6px; min-height: 32px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 5px; gap: 2px; transition: background 0.1s; color: var(--text); }
+.cal-day:hover { background: var(--surface3); }
+.cal-day.other-month { color: var(--text3); opacity: 0.4; }
+.cal-day.today { background: var(--accent-soft); color: var(--accent-hover); font-weight: 700; }
+.cal-day.selected { background: var(--accent); color: #fff; font-weight: 700; }
+.cal-day.selected:hover { background: var(--accent-hover); }
+.cal-day.past-day { opacity: 0.6; }
+.cal-appt-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.cal-day.selected .cal-appt-dot { background: rgba(255,255,255,0.8); }
+.cal-legend { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; gap: 12px; flex-wrap: wrap; }
+.cal-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text3); }
+
+/* ── Day view ── */
+.day-view-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.day-view-head { padding: 13px 18px; border-bottom: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: space-between; }
+.day-view-title { font-size: 15px; font-weight: 700; }
+.day-view-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.appt-slot { display: grid; grid-template-columns: 86px 1fr; border-bottom: 1px solid var(--border); min-height: 54px; }
+.appt-slot:last-child { border-bottom: none; }
+.appt-slot-time { padding: 0 12px; font-size: 11px; font-family: var(--mono); font-weight: 600; color: var(--text3); border-right: 1px solid var(--border); display: flex; align-items: center; background: var(--surface2); white-space: nowrap; }
+.appt-slot-body { padding: 10px 14px; display: flex; align-items: center; gap: 12px; }
+.appt-available { }
+.appt-available:hover { background: rgba(47,158,68,0.05); }
+.appt-available-label { font-size: 12px; color: var(--green); font-weight: 500; }
+.appt-booked { background: rgba(47,129,247,0.04); cursor: pointer; }
+.appt-booked:hover { background: rgba(47,129,247,0.08); }
+.appt-lunch { background: var(--surface2); }
+.appt-booked-name { font-size: 13px; font-weight: 600; }
+.appt-booked-cc { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.appt-cancelled { opacity: 0.45; }
 </style>
 </head>
 <body>
@@ -504,6 +546,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
         <div class="nav-item" id="nav-chart" onclick="showPage('chart')"><span class="nav-icon">📋</span>Active Chart</div>
         <div class="nav-item" id="nav-campuses" onclick="showPage('campuses')" style="display:none"><span class="nav-icon">🏫</span>Manage Campuses</div>
+        <div class="nav-item" id="nav-calendar" onclick="showPage('calendar')"><span class="nav-icon">📅</span>Appointments</div>
         <div class="nav-item" id="nav-pharmacy" onclick="showPage('pharmacy')" style="display:none"><span class="nav-icon">💊</span>Pharmacy Queue</div>
         <div class="nav-item" id="nav-grading" onclick="showPage('grading')" style="display:none"><span class="nav-icon">📝</span>Grading Queue</div>
       </div>
@@ -632,6 +675,39 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
             </div>
             <div class="mf"><label>Chief Complaint / Reason for Visit</label><textarea id="nr-cc" placeholder="Patient's primary reason for registration..."></textarea></div>
             <button class="btn primary" style="padding:10px 24px;font-size:14px" onclick="registerPatient()">Register Patient →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APPOINTMENT CALENDAR -->
+    <div id="page-calendar" class="page" style="display:none;">
+      <div style="padding:22px 28px 14px">
+        <h1 style="font-size:22px;font-weight:700;margin-bottom:3px">📅 Appointment Calendar</h1>
+        <p style="color:var(--text2);font-size:13px">Clinic hours 8:00 AM – 5:00 PM &nbsp;·&nbsp; 30-minute slots &nbsp;·&nbsp; Lunch break 12:00 – 1:00 PM</p>
+      </div>
+      <div class="cal-wrap">
+        <!-- Month view -->
+        <div class="cal-month-card">
+          <div class="cal-month-head">
+            <button class="cal-nav-btn" onclick="calPrevMonth()">‹</button>
+            <span class="cal-month-title" id="cal-month-label">—</span>
+            <button class="cal-nav-btn" onclick="calNextMonth()">›</button>
+          </div>
+          <div class="cal-dow-row">
+            <div class="cal-dow">Su</div><div class="cal-dow">Mo</div><div class="cal-dow">Tu</div>
+            <div class="cal-dow">We</div><div class="cal-dow">Th</div><div class="cal-dow">Fr</div><div class="cal-dow">Sa</div>
+          </div>
+          <div class="cal-days" id="cal-days-grid"></div>
+          <div class="cal-legend">
+            <div class="cal-legend-item"><span class="cal-appt-dot"></span>Has appointments</div>
+            <div class="cal-legend-item"><span style="width:14px;height:14px;border-radius:3px;background:var(--accent);display:inline-block"></span>Selected</div>
+          </div>
+        </div>
+        <!-- Day view -->
+        <div id="cal-day-view">
+          <div class="day-view-card">
+            <div class="day-view-head"><div><div class="day-view-title">Select a date</div><div class="day-view-sub">Click any day on the calendar to view appointments</div></div></div>
           </div>
         </div>
       </div>
@@ -1028,6 +1104,57 @@ P (Plan): Treatment, orders, follow-up"></textarea></div>
   </div>
 </div>
 
+<!-- BOOK APPOINTMENT -->
+<div class="overlay hidden" id="modal-book-appt">
+  <div class="modal">
+    <div class="modal-head"><h2>📅 Schedule Appointment</h2><button class="modal-x" onclick="closeM('modal-book-appt')">✕</button></div>
+    <div class="modal-body">
+      <div id="appt-date-display" style="background:var(--accent-soft);border:1px solid rgba(47,129,247,0.2);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--accent-hover);font-weight:600;margin-bottom:14px"></div>
+      <div class="fr c2">
+        <div class="mf"><label>Time Slot *</label><select id="appt-time-select" style="width:100%;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font);font-size:13px;color:var(--text)"></select></div>
+        <div class="mf"><label>Appointment Type</label><select id="appt-type" style="width:100%;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font);font-size:13px;color:var(--text)"><option>Follow-up Visit</option><option>New Patient</option><option>Sick Visit</option><option>Wellness / Annual</option><option>Vaccination</option><option>Lab / Results Review</option><option>Urgent Care</option><option>Other</option></select></div>
+      </div>
+      <div class="mf">
+        <label>Patient — Search Existing</label>
+        <div style="position:relative">
+          <input type="text" id="appt-pt-search" placeholder="Search by name, MRN, or phone..." oninput="apptSearchPt(this.value)" autocomplete="off" style="width:100%;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font);font-size:13px;color:var(--text)" />
+          <div id="appt-pt-dd" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);z-index:300;max-height:220px;overflow-y:auto"></div>
+        </div>
+        <div id="appt-selected-pt" style="display:none;align-items:center;gap:10px;background:var(--green-soft);border:1px solid rgba(47,158,68,0.25);border-radius:var(--radius);padding:8px 12px;margin-top:8px">
+          <span style="color:var(--green);font-size:16px">✓</span>
+          <div style="flex:1"><div id="appt-sel-name" style="font-weight:600;font-size:13px"></div><div id="appt-sel-meta" style="font-size:11px;color:var(--text3)"></div></div>
+          <button class="btn danger sm" onclick="apptClearPt()">✕</button>
+        </div>
+        <div style="margin-top:8px"><button class="btn sm" onclick="apptToggleNewPt()">＋ New Patient (not in system)</button></div>
+        <div id="appt-new-pt-wrap" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-top:8px">
+          <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">New Patient Info</div>
+          <div class="fr c2">
+            <div class="mf"><label>First Name *</label><input type="text" id="appt-new-first" placeholder="First" /></div>
+            <div class="mf"><label>Last Name *</label><input type="text" id="appt-new-last" placeholder="Last" /></div>
+          </div>
+          <div class="fr c2">
+            <div class="mf"><label>Date of Birth *</label><input type="date" id="appt-new-dob" /></div>
+            <div class="mf"><label>Phone</label><input type="tel" id="appt-new-phone" placeholder="555-555-5555" /></div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">✓ A chart will be created automatically when the appointment is saved.</div>
+        </div>
+      </div>
+      <div class="mf"><label>Chief Complaint / Reason for Visit</label><textarea id="appt-cc" placeholder="e.g. Sore throat, annual physical, follow-up for hypertension..." style="min-height:70px"></textarea></div>
+      <div class="mf"><label>Notes (optional)</label><input type="text" id="appt-notes" placeholder="Insurance, callback number, special instructions..." /></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-book-appt')">Cancel</button><button class="btn primary" onclick="saveAppointment()">Schedule Appointment →</button></div>
+  </div>
+</div>
+
+<!-- APPOINTMENT DETAIL -->
+<div class="overlay hidden" id="modal-appt-detail">
+  <div class="modal">
+    <div class="modal-head"><h2 id="appt-detail-heading">Appointment Details</h2><button class="modal-x" onclick="closeM('modal-appt-detail')">✕</button></div>
+    <div class="modal-body" id="appt-detail-body"></div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-appt-detail')">Close</button></div>
+  </div>
+</div>
+
 <!-- RX ORDER -->
 <div class="overlay hidden" id="modal-rx">
   <div class="modal">
@@ -1321,7 +1448,7 @@ function subscribePatients() {
 
 function showPage(p) {
   // Hide all pages using inline style (beats CSS specificity)
-  ['dashboard','chart','register','campuses','pharmacy','grading'].forEach(name => {
+  ['dashboard','chart','register','campuses','pharmacy','grading','calendar'].forEach(name => {
     const el = document.getElementById('page-' + name);
     if (el) el.style.display = 'none';
   });
@@ -1330,7 +1457,7 @@ function showPage(p) {
   // Show the target page
   const pg = document.getElementById('page-' + p);
   if (pg) {
-    const blockPages = ['campuses','dashboard','register','pharmacy','grading'];
+    const blockPages = ['campuses','dashboard','register','pharmacy','grading','calendar'];
     pg.style.display = blockPages.includes(p) ? 'block' : 'flex';
   }
   const nav = document.getElementById('nav-' + p);
@@ -1338,6 +1465,7 @@ function showPage(p) {
   if (p === 'campuses') loadCampuses();
   if (p === 'pharmacy') loadPharmacyQueue();
   if (p === 'grading') { _gradingTab = 'claims'; loadGradingQueues(); }
+  if (p === 'calendar') loadCalendarPage();
 }
 function requirePatient(modalId) {
   if (!currentPatient) { toast('Please select a patient first', 'error'); return; }
@@ -3773,6 +3901,284 @@ async function submitGrade(collection, docId, inputId) {
     loadGradingQueues();
   } catch(e) { toast('Error saving grade: ' + e.message, 'error'); }
 }
+
+// ═══════════════════════════════════════════
+// APPOINTMENT CALENDAR
+// ═══════════════════════════════════════════
+const CAL_SLOTS = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30'];
+const CAL_LUNCH = ['12:00','12:30'];
+const CAL_ALL   = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30'];
+
+let _calYear = new Date().getFullYear();
+let _calMonth = new Date().getMonth();
+let _calSelectedDate = new Date().toISOString().split('T')[0];
+let _calMonthAppts = [];
+let _calDayAppts = [];
+let _apptBookingDate = null;
+let _apptSelPt = null; // { id, name, phone, dob, isNew }
+
+const fmt12 = t => { const [h,m]=t.split(':').map(Number); return `${h===0?12:h>12?h-12:h}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`; };
+
+async function loadCalendarPage() {
+  _calYear = new Date().getFullYear();
+  _calMonth = new Date().getMonth();
+  _calSelectedDate = new Date().toISOString().split('T')[0];
+  renderCalMonth();
+  await refreshCalMonth();
+  await calSelectDay(_calSelectedDate);
+}
+
+async function refreshCalMonth() {
+  try {
+    const snap = await db.collection('appointments')
+      .where('campusId','==', currentUserProfile.campusId).get();
+    const prefix = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}`;
+    _calMonthAppts = snap.docs.map(d=>({id:d.id,...d.data()}))
+      .filter(a => (a.date||'').startsWith(prefix));
+  } catch(e) { _calMonthAppts = []; }
+  renderCalMonth();
+}
+
+function renderCalMonth() {
+  const el = document.getElementById('cal-days-grid');
+  const label = document.getElementById('cal-month-label');
+  if (!el || !label) return;
+  label.textContent = new Date(_calYear, _calMonth, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const firstDOW = new Date(_calYear, _calMonth, 1).getDay();
+  const daysInMonth = new Date(_calYear, _calMonth+1, 0).getDate();
+  const prevDays = new Date(_calYear, _calMonth, 0).getDate();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const apptDates = new Set(_calMonthAppts.filter(a=>a.status!=='cancelled').map(a=>a.date));
+  let html = '';
+  for (let i = firstDOW-1; i >= 0; i--)
+    html += `<div class="cal-day other-month">${prevDays-i}</div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cls = ['cal-day', ds===todayStr?'today':'', ds===_calSelectedDate?'selected':'', ds<todayStr?'past-day':'', apptDates.has(ds)?'has-appt':''].filter(Boolean).join(' ');
+    const dot = apptDates.has(ds) ? '<div class="cal-appt-dot"></div>' : '';
+    html += `<div class="${cls}" onclick="calSelectDay('${ds}')">${d}${dot}</div>`;
+  }
+  const total = Math.ceil((firstDOW+daysInMonth)/7)*7;
+  for (let nd = 1; nd <= total-(firstDOW+daysInMonth); nd++)
+    html += `<div class="cal-day other-month">${nd}</div>`;
+  el.innerHTML = html;
+}
+
+async function calPrevMonth() {
+  _calMonth--; if (_calMonth<0){_calMonth=11;_calYear--;}
+  _calMonthAppts=[]; renderCalMonth(); await refreshCalMonth();
+}
+async function calNextMonth() {
+  _calMonth++; if (_calMonth>11){_calMonth=0;_calYear++;}
+  _calMonthAppts=[]; renderCalMonth(); await refreshCalMonth();
+}
+
+async function calSelectDay(dateStr) {
+  _calSelectedDate = dateStr;
+  renderCalMonth();
+  const el = document.getElementById('cal-day-view');
+  if (el) el.innerHTML = '<div class="day-view-card"><div class="day-view-head"><div class="day-view-title">Loading...</div></div></div>';
+  try {
+    const snap = await db.collection('appointments')
+      .where('campusId','==',currentUserProfile.campusId)
+      .where('date','==',dateStr).get();
+    _calDayAppts = snap.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>a.time.localeCompare(b.time));
+  } catch(e) { _calDayAppts = []; }
+  renderDayView(dateStr);
+}
+
+function renderDayView(dateStr) {
+  const el = document.getElementById('cal-day-view');
+  if (!el) return;
+  const dateObj = new Date(dateStr+'T00:00:00');
+  const isWeekend = dateObj.getDay()===0||dateObj.getDay()===6;
+  const dayLabel = dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isPast = dateStr < todayStr;
+  const apptMap = {};
+  _calDayAppts.forEach(a=>{if(a.status!=='cancelled')apptMap[a.time]=a;});
+  const bookedCount = Object.keys(apptMap).length;
+  const statusColor = s => ({scheduled:'blue',confirmed:'green','no-show':'red',completed:'purple',cancelled:'red'}[s]||'blue');
+
+  const slots = isWeekend ? '' : CAL_ALL.map(time => {
+    const isLunch = CAL_LUNCH.includes(time);
+    const appt = apptMap[time];
+    if (isLunch) return `<div class="appt-slot appt-lunch"><div class="appt-slot-time">${fmt12(time)}</div><div class="appt-slot-body" style="flex:1"><span style="font-size:12px;color:var(--text3)">🍽 Lunch Break</span></div></div>`;
+    if (appt) return `<div class="appt-slot appt-booked" onclick="openApptDetail('${appt.id}')">
+      <div class="appt-slot-time">${fmt12(time)}</div>
+      <div class="appt-slot-body" style="flex:1;justify-content:space-between">
+        <div><div class="appt-booked-name">👤 ${appt.patientName||'—'}</div>
+          <div class="appt-booked-cc">${appt.chiefComplaint?'📋 '+appt.chiefComplaint:''}${appt.appointmentType?' · '+appt.appointmentType:''}</div></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge ${statusColor(appt.status)}">${appt.status}</span>
+          ${appt.patientPhone?`<span style="font-size:11px;color:var(--text3)">${appt.patientPhone}</span>`:''}
+        </div>
+      </div></div>`;
+    return `<div class="appt-slot appt-available">
+      <div class="appt-slot-time">${fmt12(time)}</div>
+      <div class="appt-slot-body" style="flex:1;justify-content:space-between">
+        <span class="appt-available-label">✓ Available</span>
+        ${!isPast?`<button class="btn primary sm" onclick="openBookingModal('${dateStr}','${time}')">Book →</button>`:'<span style="font-size:11px;color:var(--text3)">Past</span>'}
+      </div></div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="day-view-card">
+    <div class="day-view-head">
+      <div><div class="day-view-title">${dayLabel}</div>
+        <div class="day-view-sub">${isWeekend?'Clinic closed — weekend':`${bookedCount} booked · ${CAL_SLOTS.length-bookedCount} available`}</div></div>
+      ${!isPast&&!isWeekend?`<button class="btn sm" onclick="openBookingModal('${dateStr}',null)">+ New Appointment</button>`:''}
+    </div>
+    ${isWeekend?'<div style="padding:40px;text-align:center;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🏖</div><div style="font-size:14px;font-weight:600;color:var(--text2)">Weekend — Clinic Closed</div></div>':slots}
+  </div>`;
+}
+
+// ── Booking ──
+function openBookingModal(dateStr, time) {
+  _apptBookingDate = dateStr;
+  _apptSelPt = null;
+  const dateLabel = new Date(dateStr+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('appt-date-display').textContent = `📅 ${dateLabel}`;
+  const booked = new Set(_calDayAppts.filter(a=>a.status!=='cancelled').map(a=>a.time));
+  const sel = document.getElementById('appt-time-select');
+  sel.innerHTML = CAL_SLOTS.map(t=>`<option value="${t}" ${booked.has(t)?'disabled':''}${t===time?' selected':''}>${fmt12(t)}${booked.has(t)?' — Booked':''}</option>`).join('');
+  ['appt-pt-search','appt-cc','appt-notes','appt-new-first','appt-new-last','appt-new-phone'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const dob = document.getElementById('appt-new-dob'); if(dob) dob.value='';
+  document.getElementById('appt-pt-dd').style.display='none';
+  document.getElementById('appt-selected-pt').style.display='none';
+  document.getElementById('appt-new-pt-wrap').style.display='none';
+  document.getElementById('appt-type').value='Follow-up Visit';
+  openM('modal-book-appt');
+}
+
+function apptSearchPt(q) {
+  const dd = document.getElementById('appt-pt-dd');
+  if (!q||q.length<1){dd.style.display='none';return;}
+  const res = allPatients.filter(p=>`${p.first} ${p.last} ${p.mrn} ${p.phone||''}`.toLowerCase().includes(q.toLowerCase())).slice(0,7);
+  if (!res.length){dd.innerHTML='<div style="padding:12px 14px;color:var(--text3);font-size:12px">No existing patients found</div>';dd.style.display='block';return;}
+  dd.innerHTML = res.map(p=>`<div onclick="apptPickPt('${p.id}','${(p.last+', '+p.first).replace(/'/g,'')}','${(p.phone||'').replace(/'/g,'')}','${p.dob||''}','${p.mrn||''}')" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background=''">
+    <div style="width:28px;height:28px;border-radius:50%;background:${avatarColor(p.first+p.last)};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${initials(p)}</div>
+    <div><div style="font-weight:500;font-size:13px">${p.last}, ${p.first}</div><div style="font-size:11px;color:var(--text3);font-family:var(--mono)">${p.mrn}${p.dob?' · DOB '+fmtDate(p.dob):''}${p.phone?' · '+p.phone:''}</div></div>
+  </div>`).join('');
+  dd.style.display='block';
+}
+
+function apptPickPt(id, name, phone, dob, mrn) {
+  _apptSelPt = {id,name,phone,dob,isNew:false};
+  document.getElementById('appt-pt-search').value='';
+  document.getElementById('appt-pt-dd').style.display='none';
+  document.getElementById('appt-sel-name').textContent=name;
+  document.getElementById('appt-sel-meta').textContent=(mrn?mrn+' ':'')+(dob?'DOB '+fmtDate(dob):'')+(phone?' · '+phone:'');
+  document.getElementById('appt-selected-pt').style.display='flex';
+  document.getElementById('appt-new-pt-wrap').style.display='none';
+}
+
+function apptClearPt() { _apptSelPt=null; document.getElementById('appt-selected-pt').style.display='none'; document.getElementById('appt-pt-search').value=''; }
+
+function apptToggleNewPt() {
+  const wrap = document.getElementById('appt-new-pt-wrap');
+  const show = wrap.style.display==='none';
+  wrap.style.display = show?'block':'none';
+  if(show){_apptSelPt={isNew:true};document.getElementById('appt-selected-pt').style.display='none';}
+  else _apptSelPt=null;
+}
+
+async function saveAppointment() {
+  const time = document.getElementById('appt-time-select').value;
+  const type = document.getElementById('appt-type').value;
+  const cc   = document.getElementById('appt-cc').value.trim();
+  const notes= document.getElementById('appt-notes').value.trim();
+  if (!time){toast('Please select a time slot','error');return;}
+  let patientId=null,patientName='',patientPhone='',patientDob='',patientMrn='';
+  if (_apptSelPt && !_apptSelPt.isNew) {
+    ({id:patientId,name:patientName,phone:patientPhone,dob:patientDob}=_apptSelPt);
+    patientMrn = _apptSelPt.mrn||'';
+  } else if (_apptSelPt?.isNew) {
+    const first=document.getElementById('appt-new-first').value.trim();
+    const last=document.getElementById('appt-new-last').value.trim();
+    const dob=document.getElementById('appt-new-dob').value;
+    const phone=document.getElementById('appt-new-phone').value.trim();
+    if(!first||!last){toast('First and last name required for new patient','error');return;}
+    if(!dob){toast('Date of birth required','error');return;}
+    try {
+      const mrn=genMRN();
+      const ref=await db.collection('patients').add({
+        mrn,first,last,dob,phone,
+        registeredBy:currentUserProfile?.displayName||currentUser.email,
+        campusId:currentUserProfile?.campusId||'unknown',
+        campusName:currentUserProfile?.campusName||'Unknown Campus',
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        visitStatus:'open',visitId:'visit-'+Date.now(),visitNumber:1,
+        visitStartedAt:firebase.firestore.FieldValue.serverTimestamp(),visitLog:[],
+        vitals:[],medications:[],allergies:[],pmh:[],surgery:[],family:[],
+        social:null,procedures:[],vaccines:[],ekgs:[],notes:[],vision:[]
+      });
+      patientId=ref.id; patientName=`${last}, ${first}`; patientPhone=phone; patientDob=dob; patientMrn=mrn;
+      toast(`New patient ${first} ${last} registered`);
+    } catch(e){toast('Error registering patient: '+e.message,'error');return;}
+  } else {
+    patientName = document.getElementById('appt-pt-search').value.trim()||'Walk-in / Caller';
+  }
+  try {
+    await db.collection('appointments').add({
+      campusId:currentUserProfile.campusId, date:_apptBookingDate, time, duration:30,
+      patientId, patientName, patientPhone, patientDob, patientMrn,
+      chiefComplaint:cc, appointmentType:type, notes, status:'scheduled',
+      scheduledByUid:currentUser.uid,
+      scheduledByName:currentUserProfile?.displayName||currentUser.email,
+      scheduledAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeM('modal-book-appt');
+    toast(`Appointment scheduled — ${fmt12(time)}`);
+    await refreshCalMonth();
+    await calSelectDay(_calSelectedDate);
+  } catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ── Appointment Detail ──
+function openApptDetail(apptId) {
+  const a = _calDayAppts.find(x=>x.id===apptId);
+  if (!a) return;
+  document.getElementById('appt-detail-heading').textContent=`${fmt12(a.time)} — ${a.patientName||'Unknown'}`;
+  const sc = s => ({scheduled:'blue',confirmed:'green','no-show':'red',completed:'purple',cancelled:'red'}[s]||'blue');
+  document.getElementById('appt-detail-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div class="df"><label>Date</label><div class="val">${fmtDate(a.date)}</div></div>
+      <div class="df"><label>Time</label><div class="val mono">${fmt12(a.time)}</div></div>
+      <div class="df"><label>Patient</label><div class="val">${a.patientName||'—'}</div></div>
+      <div class="df"><label>Phone</label><div class="val mono">${a.patientPhone||'—'}</div></div>
+      <div class="df"><label>Type</label><div class="val">${a.appointmentType||'—'}</div></div>
+      <div class="df"><label>Status</label><div class="val"><span class="badge ${sc(a.status)}">${a.status||'scheduled'}</span></div></div>
+      ${a.chiefComplaint?`<div class="df" style="grid-column:1/-1"><label>Chief Complaint</label><div class="val">${a.chiefComplaint}</div></div>`:''}
+      ${a.notes?`<div class="df" style="grid-column:1/-1"><label>Notes</label><div class="val" style="color:var(--text2)">${a.notes}</div></div>`:''}
+      <div class="df" style="grid-column:1/-1"><label>Scheduled By</label><div class="val" style="font-size:11px;color:var(--text3)">${a.scheduledByName||'—'} · ${fmtDT(a.scheduledAt)}</div></div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Update Status</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${['scheduled','confirmed','no-show','completed','cancelled'].map(s=>`<button class="btn sm${s===a.status?' primary':''}" onclick="updateApptStatus('${apptId}','${s}')">${s}</button>`).join('')}
+      </div>
+    </div>
+    ${a.patientId?`<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)"><button class="btn primary" onclick="closeM('modal-appt-detail');loadPatient('${a.patientId}')">📋 Open Patient Chart →</button></div>`:''}`;
+  openM('modal-appt-detail');
+}
+
+async function updateApptStatus(apptId, status) {
+  try {
+    await db.collection('appointments').doc(apptId).update({status});
+    const a = _calDayAppts.find(x=>x.id===apptId);
+    if(a) a.status=status;
+    closeM('modal-appt-detail');
+    toast('Status updated: '+status);
+    await refreshCalMonth();
+    renderDayView(_calSelectedDate);
+  } catch(e){toast('Error: '+e.message,'error');}
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#appt-pt-search') && !e.target.closest('#appt-pt-dd'))
+    document.getElementById('appt-pt-dd') && (document.getElementById('appt-pt-dd').style.display='none');
+});
 
 async function toggleCampusStatus(id, currentStatus) {
   const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
