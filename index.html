@@ -3538,8 +3538,9 @@ async function renderBillingTab() {
   const claimsHistory = !existingClaims.length ? '' : `
     <div class="sc" style="margin-bottom:14px">
       <div class="sc-head"><h3>📄 Submitted Claims — Visit #${p.visitNumber||1}</h3></div>
-      <div class="sc-body"><table class="dt"><thead><tr><th>Submitted</th><th>Status</th><th>Total</th><th>ICD Codes</th><th>Graded</th></tr></thead><tbody>
+      <div class="sc-body"><table class="dt"><thead><tr><th>Form</th><th>Submitted</th><th>Status</th><th>Total</th><th>ICD Codes</th><th>Graded</th></tr></thead><tbody>
         ${existingClaims.map(c => `<tr>
+          <td><span class="badge ${c.formType==='ub04'?'purple':'blue'}">${c.formType==='ub04'?'UB-04':'CMS-1500'}</span></td>
           <td style="font-size:11px;font-family:var(--mono)">${fmtDT(c.submittedAt)}</td>
           <td><span class="badge ${c.claimStatus==='submitted'?'green':'yellow'}">${c.claimStatus}</span></td>
           <td style="font-family:var(--mono)">$${c.totalCharge||'0.00'}</td>
@@ -3554,7 +3555,15 @@ async function renderBillingTab() {
     <button class="btn primary" onclick="saveClaim('submitted')">Submit Claim</button>
   </div>` : '';
 
-  el.innerHTML = `${claimsHistory}
+  const formSel = `<div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:600;color:var(--text2)">Claim Form Type:</span>
+    <button class="btn${_billingFormType==='cms1500'?' primary':''} sm" onclick="switchBillingForm('cms1500')">📋 CMS-1500 — Professional</button>
+    <button class="btn${_billingFormType==='ub04'?' primary':''} sm" onclick="switchBillingForm('ub04')">🏥 UB-04 — Institutional</button>
+  </div>`;
+
+  el.innerHTML = `${claimsHistory}${formSel}
+  <div id="wrap-ub04" style="display:${_billingFormType==='ub04'?'block':'none'}">${_billingFormType==='ub04'?buildUB04HTML(p,canSubmit):''}</div>
+  <div id="wrap-cms1500" style="display:${_billingFormType==='cms1500'?'block':'none'}">
   <div class="sc cms-form" style="overflow:hidden">
     <div class="sc-head" style="display:flex;justify-content:space-between;align-items:center">
       <div><h3>📄 CMS-1500 Health Insurance Claim Form</h3><div style="font-size:10px;color:var(--text3);margin-top:1px">APPROVED BY NATIONAL UNIFORM CLAIM COMMITTEE (NUCC) 02/12 &nbsp;·&nbsp; Visit #${p.visitNumber||1}</div></div>
@@ -3672,7 +3681,232 @@ async function renderBillingTab() {
       ${cell('33a. NPI &nbsp; / &nbsp; 33b. Other ID', `<div style="display:flex;gap:4px">${G('cms-billing-npi','NPI')}${G('cms-billing-other-id','Other ID')}</div>`)}
     `)}
     ${submitBtns}
+  </div>
   </div>`;
+}
+
+let _billingFormType = 'cms1500';
+
+function switchBillingForm(type) {
+  if (_billingFormType === type) return;
+  if (!confirm('Switch to ' + (type==='ub04'?'UB-04 Institutional':'CMS-1500 Professional') + '? Any data entered in the current form will be cleared.')) return;
+  _billingFormType = type;
+  renderBillingTab();
+}
+
+// ─── UB-04 form builder ───────────────────────────────────────────────────
+function buildUB04HTML(p, canSubmit) {
+  const fmtDOB = d => { if(!d) return ''; const [y,m,day]=d.split('-'); return `${m}/${day}/${y}`; };
+  const G = (id,ph='',val='') => `<input type="text" class="cms-input" id="${id}" placeholder="${ph}" value="${val}" />`;
+  const GS = (id,opts,val='') => `<select class="cms-input" id="${id}">${opts.map(([v,l])=>`<option value="${v}"${v===val?' selected':''}>${l}</option>`).join('')}</select>`;
+  const cell = (label,content) => `<div class="cms-cell"><div class="cms-cell-label">${label}</div>${content}</div>`;
+  const row = (cols,content) => `<div class="cms-row" style="grid-template-columns:${cols}">${content}</div>`;
+
+  const visitNum = p.visitNumber||1;
+  const sexM = (p.gender||p.sex||'')==='Male', sexF = (p.gender||p.sex||'')==='Female';
+
+  // Type of Bill options
+  const tobOpts=[['','Select...'],['0111','0111 — Hospital Inpatient Admit-Discharge'],['0121','0121 — Hospital Inpatient Admit (Interim)'],['0211','0211 — Skilled Nursing Inpatient'],['0311','0311 — Home Health'],['0411','0411 — Religious Non-Medical Inpatient'],['0711','0711 — Clinic — Rural Health'],['0721','0721 — Clinic — Hospital Based'],['0760','0760 — Clinic — Community Mental Health'],['0851','0851 — Critical Access Hospital']];
+  // Discharge status
+  const dcOpts=[['','—'],['01','01 — Discharged to home'],['02','02 — Discharged to short-term facility'],['03','03 — Discharged to SNF'],['04','04 — Discharged to ICF'],['05','05 — Discharged to another type of inpatient care'],['06','06 — Discharged to home with organized home health'],['07','07 — Left against medical advice'],['09','09 — Admitted as inpatient to this hospital'],['20','20 — Expired'],['30','30 — Still patient'],['43','43 — Discharged to federal hospital'],['50','50 — Hospice — home'],['51','51 — Hospice — medical facility'],['61','61 — Swing bed'],['62','62 — Inpatient rehab facility'],['63','63 — Long term care hospital'],['65','65 — Psychiatric hospital'],['66','66 — Critical access hospital'],['69','69 — Discharged/transferred to designated disaster alternative care'],['70','70 — Neonate to different acute care facility']];
+  // Priority/type of admission
+  const priorOpts=[['','—'],['1','1 — Emergency'],['2','2 — Urgent'],['3','3 — Elective'],['4','4 — Newborn'],['5','5 — Trauma Center'],['9','9 — Information Not Available']];
+  // Source of admission
+  const srcOpts=[['','—'],['1','1 — Non-Health Care Facility Point of Origin'],['2','2 — Clinic'],['3','3 — Reserved'],['4','4 — Transfer from a Hospital'],['5','5 — Transfer from SNF'],['6','6 — Transfer from Another Health Care Facility'],['7','7 — Emergency Room'],['8','8 — Court/Law Enforcement'],['9','9 — Information Not Available'],['D','D — Transfer from One Distinct Unit'],['E','E — Transfer from Ambulatory Surgery Center'],['F','F — Transfer from Hospice']];
+
+  const revenueRows = [1,2,3,4,5,6,7,8,9,10].map(n=>`
+    <div style="display:grid;grid-template-columns:70px 1fr 80px 60px 90px 50px 90px 90px;gap:2px;padding:3px 8px;border-bottom:1px solid var(--border)">
+      ${G(`ub-rev${n}-code`,'0XXX')} ${G(`ub-rev${n}-desc`,'Description')} ${G(`ub-rev${n}-hcpcs`,'HCPCS')} ${G(`ub-rev${n}-mod`,'Mod')} ${G(`ub-rev${n}-date`,'MM/DD/YY')} ${G(`ub-rev${n}-units`,'1')} ${G(`ub-rev${n}-charge`,'$0.00')} ${G(`ub-rev${n}-noncov`,'$0.00')}
+    </div>`).join('');
+
+  const occRows = [1,2,3,4].map(n=>`
+    <div class="cms-cell">
+      <div class="cms-cell-label">FL ${30+n}. Occurrence Code / Date</div>
+      <div style="display:flex;gap:4px">${G(`ub-occ${n}-code`,'Code')}${G(`ub-occ${n}-date`,'MM/DD/YY')}</div>
+    </div>`).join('');
+
+  const valRows = [1,2,3].map(n=>`
+    <div class="cms-cell">
+      <div class="cms-cell-label">FL ${38+n}. Value Code / Amount</div>
+      <div style="display:flex;gap:4px">${G(`ub-val${n}-code`,'Code')}${G(`ub-val${n}-amt`,'$0.00')}</div>
+    </div>`).join('');
+
+  const condCodes = [18,19,20,21,22,23,24,25,26,27,28].map(n=>`
+    <div class="cms-cell"><div class="cms-cell-label">FL ${n}</div>${G('ub-cond'+n,'')}</div>`).join('');
+
+  const dxInputs = ['a','b','c','d','e','f','g','h','i'].map(l=>`
+    <div><div style="font-size:9px;color:var(--text3);margin-bottom:2px">67${l.toUpperCase()}.</div>${G('ub-dx-'+l,'ICD-10')}</div>`).join('');
+
+  const procRows = ['a','b','c'].map(l=>`
+    <div class="cms-cell">
+      <div class="cms-cell-label">FL 74${l.toUpperCase()}. Other Procedure / Date</div>
+      <div style="display:flex;gap:4px">${G('ub-proc-'+l,'Proc code')}${G('ub-proc-'+l+'-date','MM/DD/YY')}</div>
+    </div>`).join('');
+
+  const submitBtns = canSubmit ? `<div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 14px;border-top:1px solid var(--border);background:var(--surface2)">
+    <button class="btn" onclick="saveClaim('draft')">Save Draft</button>
+    <button class="btn primary" onclick="saveClaim('submitted')">Submit Claim</button>
+  </div>` : '';
+
+  return `<div class="sc cms-form" style="overflow:hidden">
+    <div class="sc-head" style="display:flex;justify-content:space-between;align-items:center">
+      <div><h3>🏥 UB-04 Uniform Bill Claim Form</h3><div style="font-size:10px;color:var(--text3);margin-top:1px">CMS-1450 &nbsp;·&nbsp; Institutional Billing &nbsp;·&nbsp; Visit #${visitNum}</div></div>
+      ${canSubmit ? `<div style="display:flex;gap:8px"><button class="btn" onclick="saveClaim('draft')">Save Draft</button><button class="btn primary" onclick="saveClaim('submitted')">Submit Claim</button></div>` : ''}
+    </div>
+
+    <!-- FL 1-7: Provider / Billing Info -->
+    ${row('2fr 1fr', `
+      ${cell('FL 1. Billing Provider Name &amp; Address', `${G('ub-provider-name','Facility / Provider name',p.campusName||'')}<div style="margin-top:4px">${G('ub-provider-addr','Address, City, State, ZIP')}</div>`)}
+      ${cell('FL 2. Pay-to Name &amp; Address (if different)', `${G('ub-payto-name','Name')}<div style="margin-top:4px">${G('ub-payto-addr','Address')}</div>`)}
+    `)}
+    ${row('1fr 1fr 80px 1fr 2fr', `
+      ${cell('FL 3a. Patient Control No. (Account #)', G('ub-pt-ctrl','',p.mrn||''))}
+      ${cell('FL 3b. Medical / Health Record No.', G('ub-mr-num',''))}
+      ${cell('FL 4. Type of Bill', GS('ub-tob', tobOpts))}
+      ${cell('FL 5. Federal Tax ID', G('ub-taxid','XX-XXXXXXX'))}
+      ${cell('FL 6. Statement Covers Period', `<div style="display:flex;gap:6px;align-items:center"><span style="font-size:10px;color:var(--text3)">From</span>${G('ub-stmt-from','MM/DD/YY')}<span style="font-size:10px;color:var(--text3)">Through</span>${G('ub-stmt-thru','MM/DD/YY')}</div>`)}
+    `)}
+
+    <!-- FL 8-17: Patient Info -->
+    ${row('80px 2fr 2fr 100px 60px', `
+      ${cell('FL 8a. Patient ID', G('ub-pt-id',''))}
+      ${cell('FL 8b. Patient Name (Last, First, MI)', G('ub-pt-name','',`${p.last||''}, ${p.first||''}`))}
+      ${cell('FL 9. Patient Address', G('ub-pt-addr','Street, City, State, ZIP',p.address||''))}
+      ${cell('FL 10. Birth Date', G('ub-pt-dob','MM/DD/YYYY',fmtDOB(p.dob)))}
+      ${cell('FL 11. Sex', `<div style="display:flex;gap:8px;padding:3px 0"><label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="radio" name="ub-sex" value="M" ${sexM?'checked':''}> M</label><label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="radio" name="ub-sex" value="F" ${sexF?'checked':''}> F</label></div>`)}
+    `)}
+    ${row('1fr 60px 1fr 1fr 60px 1fr', `
+      ${cell('FL 12. Admission / Start of Care Date', G('ub-admit-date','MM/DD/YY'))}
+      ${cell('FL 13. Admit Hour', G('ub-admit-hr','HH'))}
+      ${cell('FL 14. Priority (Type) of Admission', GS('ub-priority', priorOpts))}
+      ${cell('FL 15. Source of Admission', GS('ub-source', srcOpts))}
+      ${cell('FL 16. Discharge Hour', G('ub-dc-hr','HH'))}
+      ${cell('FL 17. Patient Discharge Status', GS('ub-dc-status', dcOpts))}
+    `)}
+
+    <!-- FL 18-28: Condition Codes -->
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="padding:5px 10px;background:var(--surface3);border-bottom:1px solid var(--border)"><span class="cms-cell-label">FL 18–28. Condition Codes</span></div>
+      <div class="cms-row" style="grid-template-columns:repeat(11,1fr)">${condCodes}</div>
+    </div>
+
+    <!-- FL 31-34: Occurrence Codes / FL 39-41: Value Codes -->
+    ${row('repeat(4,1fr) repeat(3,1fr)', `${occRows}${valRows}`)}
+
+    <!-- FL 42-49: Revenue Code Table -->
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="padding:5px 10px;background:var(--surface3);border-bottom:1px solid var(--border)"><span class="cms-cell-label">FL 42–49. Revenue Code / Description / HCPCS / Service Lines</span></div>
+      <div style="overflow-x:auto">
+        <div style="min-width:700px">
+          <div style="display:grid;grid-template-columns:70px 1fr 80px 60px 90px 50px 90px 90px;gap:2px;padding:4px 8px;background:var(--surface2);border-bottom:1px solid var(--border)">
+            <span class="cms-cell-label">42 Rev Code</span><span class="cms-cell-label">43 Description</span><span class="cms-cell-label">44 HCPCS</span><span class="cms-cell-label">Mod</span><span class="cms-cell-label">45 Serv Date</span><span class="cms-cell-label">46 Units</span><span class="cms-cell-label">47 Charges</span><span class="cms-cell-label">48 Non-Cov</span>
+          </div>
+          ${revenueRows}
+          <div style="display:grid;grid-template-columns:70px 1fr 80px 60px 90px 50px 90px 90px;gap:2px;padding:3px 8px;border-top:1px solid var(--border);background:var(--surface2)">
+            <div style="font-size:9px;font-weight:700;color:var(--text3)">0001</div>
+            <div style="font-size:9px;color:var(--text3)">PAGE TOTALS</div>
+            <div></div><div></div><div></div><div></div>
+            ${G('ub-total-charges','$0.00')} ${G('ub-total-noncov','$0.00')}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FL 50-65: Payer Info -->
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="padding:5px 10px;background:var(--surface3);border-bottom:1px solid var(--border)"><span class="cms-cell-label">FL 50–65. Insurance / Payer Information</span></div>
+      <div class="cms-row" style="grid-template-columns:30px 2fr 1fr 60px 60px 90px 90px 1fr 1fr">
+        <div class="cms-cell" style="display:flex;flex-direction:column;justify-content:space-between;font-size:9px;font-weight:700;color:var(--text3);padding-top:18px"><div>A</div><div>B</div><div>C</div></div>
+        ${cell('FL 50. Payer Name', `${G('ub-payer-a','Primary payer')}<div style="margin-top:4px">${G('ub-payer-b','Secondary payer')}</div><div style="margin-top:4px">${G('ub-payer-c','Tertiary payer')}</div>`)}
+        ${cell('FL 51. Health Plan ID', `${G('ub-plan-id-a','')}<div style="margin-top:4px">${G('ub-plan-id-b','')}</div><div style="margin-top:4px">${G('ub-plan-id-c','')}</div>`)}
+        ${cell('FL 52. Release', `${G('ub-rel-a','Y/N')}<div style="margin-top:4px">${G('ub-rel-b','')}</div><div style="margin-top:4px">${G('ub-rel-c','')}</div>`)}
+        ${cell('FL 53. Assign.', `${G('ub-assign-a','Y/N')}<div style="margin-top:4px">${G('ub-assign-b','')}</div><div style="margin-top:4px">${G('ub-assign-c','')}</div>`)}
+        ${cell('FL 54. Prior Payments', `${G('ub-prior-a','$0.00')}<div style="margin-top:4px">${G('ub-prior-b','$0.00')}</div><div style="margin-top:4px">${G('ub-prior-c','$0.00')}</div>`)}
+        ${cell('FL 55. Est. Amount Due', `${G('ub-est-a','$0.00')}<div style="margin-top:4px">${G('ub-est-b','$0.00')}</div><div style="margin-top:4px">${G('ub-est-c','$0.00')}</div>`)}
+        ${cell('FL 56. NPI &nbsp;/&nbsp; FL 57. Other Provider ID', `${G('ub-npi-a','NPI')}<div style="margin-top:4px">${G('ub-npi-b','NPI')}</div><div style="margin-top:4px">${G('ub-npi-c','NPI')}</div>`)}
+        ${cell('FL 57. Other ID', `${G('ub-other-id-a','')}<div style="margin-top:4px">${G('ub-other-id-b','')}</div><div style="margin-top:4px">${G('ub-other-id-c','')}</div>`)}
+      </div>
+    </div>
+    ${row('2fr 60px 1fr 1fr 1fr 1fr 1fr 1fr', `
+      ${cell('FL 58. Insured\'s Name', G('ub-ins-name','Last, First, MI'))}
+      ${cell('FL 59. Rel.', G('ub-ins-rel','01'))}
+      ${cell('FL 60. Insured\'s Unique ID', G('ub-ins-id',''))}
+      ${cell('FL 61. Group Name', G('ub-group-name','',p.insurance||''))}
+      ${cell('FL 62. Group Number', G('ub-group-num',''))}
+      ${cell('FL 63. Treatment Auth. Codes', G('ub-auth-code',''))}
+      ${cell('FL 64. Document Control No.', G('ub-dcn',''))}
+      ${cell('FL 65. Employer Name', G('ub-employer',''))}
+    `)}
+
+    <!-- FL 66-74: Diagnosis & Procedures -->
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border)">
+      <div class="cms-cell-label" style="margin-bottom:6px">FL 66. ICD Indicator &nbsp;<input type="text" id="ub-icd-ind" style="width:22px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;font-family:var(--mono);font-size:11px;background:var(--surface)" value="0" title="0=ICD-10-CM | 9=ICD-9-CM" /> &nbsp;&nbsp; FL 67. Principal Diagnosis Code &nbsp; ${G('ub-dx-principal','ICD-10')}</div>
+      <div class="cms-cell-label" style="margin-bottom:4px">FL 67A–I. Other Diagnosis Codes</div>
+      <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px">${dxInputs}</div>
+    </div>
+    ${row('1fr 1fr 1fr 1fr 1fr', `
+      ${cell('FL 69. Admitting Diagnosis', G('ub-dx-admit','ICD-10'))}
+      ${cell('FL 70a. Patient Reason for Visit', G('ub-reason-a','ICD-10'))}
+      ${cell('FL 70b. Reason for Visit', G('ub-reason-b','ICD-10'))}
+      ${cell('FL 70c. Reason for Visit', G('ub-reason-c','ICD-10'))}
+      ${cell('FL 71. PPS Code', G('ub-pps',''))}
+    `)}
+    ${row('1fr 1fr 1fr 1fr 1fr', `
+      ${cell('FL 74. Principal Procedure / Date', `<div style="display:flex;gap:4px">${G('ub-proc-principal','Proc code')}${G('ub-proc-principal-date','MM/DD/YY')}</div>`)}
+      ${procRows}
+    `)}
+
+    <!-- FL 76-81: Attending / Operating / Other Providers -->
+    ${row('1fr 1fr', `
+      ${cell('FL 76. Attending Provider — NPI / Qualifier / Last / First', `<div style="display:flex;gap:4px">${G('ub-attend-npi','NPI')}${G('ub-attend-qual','Qual')}${G('ub-attend-last','Last')}${G('ub-attend-first','First')}</div>`)}
+      ${cell('FL 77. Operating Provider — NPI / Qualifier / Last / First', `<div style="display:flex;gap:4px">${G('ub-oper-npi','NPI')}${G('ub-oper-qual','Qual')}${G('ub-oper-last','Last')}${G('ub-oper-first','First')}</div>`)}
+    `)}
+    ${row('1fr 1fr 1fr', `
+      ${cell('FL 78. Other Provider — NPI / Qualifier / Last / First', `<div style="display:flex;gap:4px">${G('ub-other1-npi','NPI')}${G('ub-other1-qual','Qual')}${G('ub-other1-last','Last')}${G('ub-other1-first','First')}</div>`)}
+      ${cell('FL 79. Other Provider — NPI / Qualifier / Last / First', `<div style="display:flex;gap:4px">${G('ub-other2-npi','NPI')}${G('ub-other2-qual','Qual')}${G('ub-other2-last','Last')}${G('ub-other2-first','First')}</div>`)}
+      ${cell('FL 80. Remarks', G('ub-remarks','Additional information...'))}
+    `)}
+    ${submitBtns}
+  </div>`;
+}
+
+function getUB04FormData() {
+  const g = id => document.getElementById(id)?.value?.trim()||'';
+  const r = name => document.querySelector(`input[name="${name}"]:checked`)?.value||'';
+  const sls = [];
+  for(let n=1;n<=10;n++){const c=g(`ub-rev${n}-charge`);if(c)sls.push({revCode:g(`ub-rev${n}-code`),desc:g(`ub-rev${n}-desc`),hcpcs:g(`ub-rev${n}-hcpcs`),mod:g(`ub-rev${n}-mod`),date:g(`ub-rev${n}-date`),units:g(`ub-rev${n}-units`),charge:c,nonCov:g(`ub-rev${n}-noncov`)});}
+  const procs=[];[{k:'principal',d:'principal-date'},...['a','b','c'].map(l=>({k:l,d:l+'-date'}))].forEach(({k,d})=>{const c=g(`ub-proc-${k}`);if(c)procs.push({code:c,date:g(`ub-proc-${d}`)});});
+  const dxOther={};['a','b','c','d','e','f','g','h','i'].forEach(l=>{const v=g('ub-dx-'+l);if(v)dxOther['dx_'+l]=v;});
+  return {
+    formType:'ub04',
+    providerName:g('ub-provider-name'),providerAddr:g('ub-provider-addr'),
+    paytoName:g('ub-payto-name'),paytoAddr:g('ub-payto-addr'),
+    ptCtrl:g('ub-pt-ctrl'),mrNum:g('ub-mr-num'),typeOfBill:g('ub-tob'),
+    taxId:g('ub-taxid'),stmtFrom:g('ub-stmt-from'),stmtThru:g('ub-stmt-thru'),
+    ptId:g('ub-pt-id'),ptName:g('ub-pt-name'),ptAddr:g('ub-pt-addr'),
+    ptDob:g('ub-pt-dob'),ptSex:r('ub-sex'),
+    admitDate:g('ub-admit-date'),admitHr:g('ub-admit-hr'),
+    priority:g('ub-priority'),source:g('ub-source'),
+    dcHr:g('ub-dc-hr'),dcStatus:g('ub-dc-status'),
+    condCodes:[18,19,20,21,22,23,24,25,26,27,28].reduce((a,n)=>{const v=g('ub-cond'+n);if(v)a['cond'+n]=v;return a;},{}),
+    occurrences:[1,2,3,4].map(n=>({code:g(`ub-occ${n}-code`),date:g(`ub-occ${n}-date`)})).filter(o=>o.code),
+    valueCodes:[1,2,3].map(n=>({code:g(`ub-val${n}-code`),amt:g(`ub-val${n}-amt`)})).filter(v=>v.code),
+    serviceLines:sls,
+    totalCharges:g('ub-total-charges'),totalNonCov:g('ub-total-noncov'),
+    payerA:g('ub-payer-a'),payerB:g('ub-payer-b'),payerC:g('ub-payer-c'),
+    planIdA:g('ub-plan-id-a'),planIdB:g('ub-plan-id-b'),planIdC:g('ub-plan-id-c'),
+    npiA:g('ub-npi-a'),npiB:g('ub-npi-b'),npiC:g('ub-npi-c'),
+    insName:g('ub-ins-name'),insRel:g('ub-ins-rel'),insId:g('ub-ins-id'),
+    groupName:g('ub-group-name'),groupNum:g('ub-group-num'),
+    authCode:g('ub-auth-code'),dcn:g('ub-dcn'),employer:g('ub-employer'),
+    icdIndicator:g('ub-icd-ind'),dxPrincipal:g('ub-dx-principal'),...dxOther,
+    dxAdmit:g('ub-dx-admit'),reasonA:g('ub-reason-a'),reasonB:g('ub-reason-b'),reasonC:g('ub-reason-c'),
+    ppsCode:g('ub-pps'),procedures:procs,
+    attendNpi:g('ub-attend-npi'),attendQual:g('ub-attend-qual'),attendLast:g('ub-attend-last'),attendFirst:g('ub-attend-first'),
+    operNpi:g('ub-oper-npi'),operLast:g('ub-oper-last'),
+    other1Npi:g('ub-other1-npi'),other2Npi:g('ub-other2-npi'),
+    remarks:g('ub-remarks')
+  };
 }
 
 function getClaimFormData() {
@@ -3720,7 +3954,10 @@ function getClaimFormData() {
 
 async function saveClaim(status) {
   const p = currentPatient;
-  const data = getClaimFormData();
+  const data = _billingFormType === 'ub04' ? getUB04FormData() : getClaimFormData();
+  const totalCharge = _billingFormType === 'ub04'
+    ? (document.getElementById('ub-total-charges')?.value?.trim() || '0.00')
+    : (document.getElementById('cms-total-charge')?.value?.trim() || '0.00');
   try {
     await db.collection('claims').add({
       patientId: p.id, visitId: p.visitId||null, visitNumber: p.visitNumber||1,
@@ -3728,7 +3965,9 @@ async function saveClaim(status) {
       submittedByUid: currentUser.uid,
       submittedByName: currentUserProfile?.displayName || currentUser.email,
       patientName: `${p.last}, ${p.first}`, mrn: p.mrn,
+      formType: _billingFormType,
       ...data,
+      totalCharge,
       claimStatus: status,
       submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
       gradedByUid: null, gradeNote: null
