@@ -3785,7 +3785,10 @@ function renderRxQueue() {
     <td style="font-size:11px;color:var(--text2)">${r.prescriber||'—'}</td>
     <td style="font-size:10px;font-family:var(--mono);color:var(--text3)">${fmtDT(r.orderedAt)}</td>
     <td><span class="rx-status ${r.rxStatus}">${r.rxStatus}</span></td>
-    <td>${canFill && (r.rxStatus==='ordered'||r.rxStatus==='verified') ? `<button class="btn primary sm" onclick="event.stopPropagation();openRxFillModal('${r.id}')">Fill</button>` : ''}</td>
+    <td style="white-space:nowrap">
+      ${canFill && (r.rxStatus==='ordered'||r.rxStatus==='verified') ? `<button class="btn primary sm" onclick="event.stopPropagation();openRxFillModal('${r.id}')">Fill</button>` : ''}
+      ${r.rxStatus==='dispensed' ? `<button class="btn sm" onclick="event.stopPropagation();printRxLabel('${r.id}')" title="Print prescription label">🖨 Label</button>` : ''}
+    </td>
   </tr>`).join('');
 }
 
@@ -3839,6 +3842,100 @@ function switchGradeTab(tab, el) {
   document.querySelectorAll('.grade-tab').forEach(t => t.classList.remove('active'));
   if (el) el.classList.add('active');
   loadGradingQueues();
+}
+
+async function printRxLabel(rxId) {
+  const rx = _allRxQueue.find(r => r.id === rxId);
+  if (!rx) { toast('Prescription not found', 'error'); return; }
+
+  // Fetch fill data
+  let fill = null;
+  try {
+    const snap = await db.collection('rx_fills').where('rxId','==',rxId).get();
+    if (!snap.empty) fill = snap.docs[0].data();
+  } catch(e) { console.warn('Could not load fill data:', e); }
+
+  const qty        = fill?.verifiedQty || rx.qty || '—';
+  const lot        = fill?.lotNumber   || '';
+  const dispensedBy= fill?.filledByName|| '';
+  const rxNum      = 'RX-' + rxId.slice(-8).toUpperCase();
+  const dateStr    = new Date().toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
+  const pharmacyName = (currentUserProfile?.campusName || 'MedLearn Training Pharmacy') + ' — Training Pharmacy';
+  const refillsRemaining = Math.max(0, (rx.refills || 0));
+
+  // Route-specific auxiliary warnings
+  const auxMap = {
+    'IV':      ['⚠ FOR INTRAVENOUS USE ONLY — Administer under medical supervision.'],
+    'IM':      ['⚠ FOR INTRAMUSCULAR USE ONLY.'],
+    'SQ':      ['⚠ FOR SUBCUTANEOUS USE ONLY.'],
+    'topical': ['⚠ FOR EXTERNAL USE ONLY. Avoid contact with eyes, mouth, and mucous membranes.'],
+    'inhaled': ['⚠ FOR ORAL INHALATION ONLY. Shake well before each use.'],
+    'PO':      []
+  };
+  const auxWarnings = auxMap[rx.route] || [];
+
+  const pw = window.open('','_blank','width=700,height=600');
+  if (!pw) { toast('Allow pop-ups in your browser to print labels','error'); return; }
+
+  pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rx Label — ${rxNum}</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,Helvetica,sans-serif;background:#f0f0f0;padding:.4in;display:flex;flex-direction:column;align-items:center;gap:.25in}
+  .rx-label{width:4in;background:#fff;border:2px solid #222;border-radius:5px;padding:12px 14px;page-break-inside:avoid}
+  .rx-pharmacy{font-size:9.5pt;font-weight:700;color:#000;border-bottom:1.5px solid #222;padding-bottom:6px;margin-bottom:7px;text-align:center;letter-spacing:.02em}
+  .rx-header{display:flex;justify-content:space-between;font-size:8pt;color:#333;margin-bottom:7px}
+  .rx-patient{font-size:11pt;font-weight:700;color:#000;margin-bottom:4px;letter-spacing:.01em}
+  .rx-drug{font-size:11.5pt;font-weight:700;color:#000;text-transform:uppercase;margin-bottom:3px}
+  .rx-qty{font-size:9pt;color:#333;margin-bottom:6px}
+  .rx-sig{font-size:9.5pt;color:#000;line-height:1.5;margin-bottom:8px;padding:6px 8px;background:#f8f8f8;border-left:3px solid #555;border-radius:2px}
+  .rx-footer{display:flex;justify-content:space-between;font-size:8pt;color:#444;margin-bottom:8px;flex-wrap:wrap;gap:4px}
+  .rx-barcode{width:100%;text-align:center;margin:6px 0 2px}
+  .rx-barcode svg{max-width:100%}
+  .rx-rxnum{font-size:7.5pt;font-family:'Courier New',monospace;text-align:center;color:#555;letter-spacing:.07em;margin-bottom:6px}
+  .rx-caution{font-size:6.5pt;color:#555;line-height:1.4;border-top:1px solid #ddd;padding-top:6px;margin-top:4px}
+  .rx-aux{font-size:7.5pt;font-weight:700;color:#c00;margin-top:5px;line-height:1.4}
+  .rx-lot{font-size:7.5pt;color:#777;margin-top:3px}
+  .print-btn{font-size:13pt;padding:10px 24px;cursor:pointer;background:#1a6fd4;color:#fff;border:none;border-radius:5px;margin-top:4px}
+  @media print{body{background:#fff;padding:0}.print-btn{display:none}.rx-label{border:1.5px solid #000}@page{size:4in 6in;margin:.1in}}
+</style>
+</head>
+<body>
+  <div class="rx-label" id="the-label">
+    <div class="rx-pharmacy">${pharmacyName}</div>
+    <div class="rx-header">
+      <span><strong>Rx#:</strong> ${rxNum}</span>
+      <span><strong>Date:</strong> ${dateStr}</span>
+    </div>
+    <div class="rx-patient">${rx.patientName || '—'}</div>
+    <div class="rx-drug">${rx.drug} ${rx.dose}</div>
+    <div class="rx-qty">Qty: ${qty} &nbsp;·&nbsp; Route: ${rx.route}</div>
+    <div class="rx-sig">${rx.sig || '—'}</div>
+    <div class="rx-footer">
+      <span><strong>Prescriber:</strong> ${rx.prescriber||'—'}</span>
+      <span><strong>Refills:</strong> ${refillsRemaining} remaining</span>
+    </div>
+    ${lot ? `<div class="rx-lot">Lot #: ${lot}</div>` : ''}
+    ${auxWarnings.map(w=>`<div class="rx-aux">${w}</div>`).join('')}
+    <div class="rx-barcode"><svg id="rx-bc"></svg></div>
+    <div class="rx-rxnum">${rxNum}</div>
+    <div class="rx-caution">
+      CAUTION: Federal law prohibits the transfer of this drug to any person other than the patient for whom it was prescribed.<br>
+      Keep out of reach of children. Store as directed. This is a training simulation — not a valid prescription.
+    </div>
+    ${dispensedBy ? `<div class="rx-lot" style="margin-top:5px">Dispensed by: ${dispensedBy}</div>` : ''}
+  </div>
+  <button class="print-btn" onclick="window.print()">🖨 Print Label</button>
+  <script>
+    window.addEventListener('load',function(){
+      if(typeof JsBarcode!=='undefined'){
+        try{JsBarcode('#rx-bc','${rxNum}',{format:'CODE128',width:1.8,height:36,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'});}catch(e){}
+      }
+      setTimeout(function(){window.print();},700);
+    });
+  <\/script>
+</body></html>`);
+  pw.document.close();
 }
 
 async function loadGradingQueues() {
