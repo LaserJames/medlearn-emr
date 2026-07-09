@@ -1496,14 +1496,18 @@ function showApp() {
     document.getElementById('nav-pharmacy').style.display = 'flex';
     document.getElementById('nav-billing-queue').style.display = 'flex';
     document.getElementById('nav-grading').style.display = 'flex';
+    refreshPharmacyBadge();
+    refreshBillingBadge();
     checkRenewalBanner();
   } else {
     // Students
     if (prog === 'pharmacy_tech') {
       document.getElementById('nav-pharmacy').style.display = 'flex';
+      refreshPharmacyBadge();
     }
     if (prog === 'billing_coding') {
       document.getElementById('nav-billing-queue').style.display = 'flex';
+      refreshBillingBadge();
     }
     checkRenewalBanner();
   }
@@ -5065,6 +5069,36 @@ function updateBillingQueueBadge() {
   const pending = _allBillingQueue.filter(r => r.claimStatus === 'none').length;
   const badge = document.getElementById('nav-bq-badge');
   if (badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline' : 'none'; }
+}
+
+async function refreshBillingBadge() {
+  try {
+    const campusId = currentUserProfile.campusId;
+    const ptSnap = await db.collection('patients').where('campusId','==',campusId).get();
+    const patients = ptSnap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>!p.visitStatus||p.visitStatus==='complete');
+    const clSnap = await db.collection('claims').where('campusId','==',campusId).get();
+    const claims = clSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const pending = patients.filter(p => {
+      const vid = p.visitId||null;
+      const patClaims = claims.filter(c=>c.patientId===p.id&&(!vid||c.visitId===vid));
+      return !patClaims.find(c=>c.claimStatus==='submitted');
+    }).length;
+    const badge = document.getElementById('nav-bq-badge');
+    if (badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline' : 'none'; }
+  } catch(e) {}
+}
+
+async function refreshPharmacyBadge() {
+  try {
+    const campusId = currentUserProfile.campusId;
+    const snap = await db.collection('prescriptions').where('campusId','==',campusId).get();
+    const pending = snap.docs.filter(d => {
+      const s = d.data().rxStatus;
+      return s === 'ordered' || s === 'verified';
+    }).length;
+    const badge = document.getElementById('nav-pharmacy-badge');
+    if (badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline' : 'none'; }
+  } catch(e) {}
 }
 
 function filterBillingQueue(filter) {
