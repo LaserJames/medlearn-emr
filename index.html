@@ -580,7 +580,8 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <div class="nav-item" id="nav-chart" onclick="showPage('chart')"><span class="nav-icon">📋</span>Active Chart</div>
         <div class="nav-item" id="nav-campuses" onclick="showPage('campuses')" style="display:none"><span class="nav-icon">🏫</span>Manage Campuses</div>
         <div class="nav-item" id="nav-calendar" onclick="showPage('calendar')"><span class="nav-icon">📅</span>Appointments</div>
-        <div class="nav-item" id="nav-pharmacy" onclick="showPage('pharmacy')" style="display:none"><span class="nav-icon">💊</span>Pharmacy Queue</div>
+        <div class="nav-item" id="nav-pharmacy" onclick="showPage('pharmacy')" style="display:none"><span class="nav-icon">💊</span>Pharmacy Queue <span id="nav-pharmacy-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:auto"></span></div>
+        <div class="nav-item" id="nav-billing-queue" onclick="showPage('billing-queue')" style="display:none"><span class="nav-icon">🏥</span>Billing Queue <span id="nav-bq-badge" style="display:none;background:#e3b341;color:#000;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:auto"></span></div>
         <div class="nav-item" id="nav-grading" onclick="showPage('grading')" style="display:none"><span class="nav-icon">📝</span>Grading Queue</div>
       </div>
       <div class="sidebar-divider"></div>
@@ -766,6 +767,26 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <table class="rx-queue-table">
             <thead><tr><th>Patient</th><th>MRN</th><th>Drug</th><th>Dose</th><th>Sig</th><th>Route</th><th>Refills</th><th>Provider</th><th>Ordered</th><th>Status</th><th></th></tr></thead>
             <tbody id="rxq-tbody"><tr><td colspan="11" style="text-align:center;color:var(--text3);padding:32px">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- BILLING QUEUE (Billing/Coding Students + Instructors) -->
+    <div id="page-billing-queue" class="page" style="display:none;">
+      <h1>🏥 Billing Queue</h1>
+      <p class="page-sub">Finalized visits ready to be billed. Click <strong>Bill Now</strong> to open the patient's Billing tab.</p>
+      <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+        <button class="btn sm" onclick="filterBillingQueue('pending')" id="bq-btn-pending" style="background:var(--accent-soft);border-color:rgba(47,129,247,0.25);color:var(--accent-hover)">⏳ Needs Billing</button>
+        <button class="btn sm" onclick="filterBillingQueue('submitted')" id="bq-btn-submitted">✅ Submitted</button>
+        <button class="btn sm" onclick="filterBillingQueue('all')" id="bq-btn-all">All</button>
+        <button class="btn sm" onclick="loadBillingQueue()" style="margin-left:auto">↺ Refresh</button>
+      </div>
+      <div class="dash-card">
+        <div style="overflow-y:auto;max-height:calc(100vh - 280px)">
+          <table class="rx-queue-table">
+            <thead><tr><th>Patient</th><th>MRN</th><th>Visit</th><th>Finalized</th><th>Finalized By</th><th>Claim Status</th><th></th></tr></thead>
+            <tbody id="bq-tbody"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1467,16 +1488,21 @@ function showApp() {
   // Show/hide nav items by role and program
   if (role === 'admin') {
     document.getElementById('nav-campuses').style.display = 'flex';
+    document.getElementById('nav-billing-queue').style.display = 'flex';
     document.getElementById('nav-grading').style.display = 'flex';
     seedCampusesIfNeeded();
   } else if (role === 'instructor') {
     document.getElementById('nav-pharmacy').style.display = 'flex';
+    document.getElementById('nav-billing-queue').style.display = 'flex';
     document.getElementById('nav-grading').style.display = 'flex';
     checkRenewalBanner();
   } else {
     // Students
     if (prog === 'pharmacy_tech') {
       document.getElementById('nav-pharmacy').style.display = 'flex';
+    }
+    if (prog === 'billing_coding') {
+      document.getElementById('nav-billing-queue').style.display = 'flex';
     }
     checkRenewalBanner();
   }
@@ -1518,7 +1544,7 @@ function subscribePatients() {
 
 function showPage(p) {
   // Hide all pages using inline style (beats CSS specificity)
-  ['dashboard','chart','register','campuses','pharmacy','grading','calendar'].forEach(name => {
+  ['dashboard','chart','register','campuses','pharmacy','billing-queue','grading','calendar'].forEach(name => {
     const el = document.getElementById('page-' + name);
     if (el) el.style.display = 'none';
   });
@@ -1527,13 +1553,14 @@ function showPage(p) {
   // Show the target page
   const pg = document.getElementById('page-' + p);
   if (pg) {
-    const blockPages = ['campuses','dashboard','register','pharmacy','grading','calendar'];
+    const blockPages = ['campuses','dashboard','register','pharmacy','billing-queue','grading','calendar'];
     pg.style.display = blockPages.includes(p) ? 'block' : 'flex';
   }
   const nav = document.getElementById('nav-' + p);
   if (nav) nav.classList.add('active');
   if (p === 'campuses') loadCampuses();
   if (p === 'pharmacy') loadPharmacyQueue();
+  if (p === 'billing-queue') loadBillingQueue();
   if (p === 'grading') { _gradingTab = 'claims'; loadGradingQueues(); }
   if (p === 'calendar') loadCalendarPage();
 }
@@ -4988,6 +5015,106 @@ async function loadPharmacyQueue() {
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="11" style="color:var(--red);padding:16px">Error: ${e.message}</td></tr>`;
   }
+}
+
+// ═══════════════════════════════════════════
+// BILLING QUEUE
+// ═══════════════════════════════════════════
+let _allBillingQueue = [];
+let _bqFilter = 'pending';
+
+async function loadBillingQueue() {
+  const tbody = document.getElementById('bq-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Loading...</td></tr>';
+  try {
+    const campusId = currentUserProfile.campusId;
+    // Get all finalized patients for this campus
+    const ptSnap = await db.collection('patients').where('campusId','==',campusId).get();
+    const patients = ptSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => !p.visitStatus || p.visitStatus === 'complete');
+
+    // Get all submitted/draft claims for this campus
+    const clSnap = await db.collection('claims').where('campusId','==',campusId).get();
+    const claims = clSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Build queue rows — one row per patient visit that is finalized
+    _allBillingQueue = patients.map(p => {
+      const visitId = p.visitId || null;
+      const patientClaims = claims.filter(c => c.patientId === p.id && (!visitId || c.visitId === visitId));
+      const submitted = patientClaims.find(c => c.claimStatus === 'submitted');
+      const draft = patientClaims.find(c => c.claimStatus === 'draft');
+      const claimStatus = submitted ? 'submitted' : draft ? 'draft' : 'none';
+      return {
+        patientId: p.id, patientName: `${p.last}, ${p.first}`, mrn: p.mrn,
+        visitNumber: p.visitNumber || 1, visitId,
+        finalizedAt: p.finalizedAt || null, finalizedBy: p.finalizedBy || null,
+        claimStatus
+      };
+    }).sort((a,b) => (b.finalizedAt?.seconds||0) - (a.finalizedAt?.seconds||0));
+
+    renderBillingQueue();
+    updateBillingQueueBadge();
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:16px">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function updateBillingQueueBadge() {
+  const pending = _allBillingQueue.filter(r => r.claimStatus === 'none').length;
+  const badge = document.getElementById('nav-bq-badge');
+  if (badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline' : 'none'; }
+}
+
+function filterBillingQueue(filter) {
+  _bqFilter = filter;
+  ['pending','submitted','all'].forEach(f => {
+    const btn = document.getElementById('bq-btn-'+f);
+    if (btn) { btn.style.background = f===filter?'var(--accent-soft)':''; btn.style.borderColor = f===filter?'rgba(47,129,247,0.25)':''; btn.style.color = f===filter?'var(--accent-hover)':''; }
+  });
+  renderBillingQueue();
+}
+
+function renderBillingQueue() {
+  const tbody = document.getElementById('bq-tbody');
+  if (!tbody) return;
+  let rows = _allBillingQueue;
+  if (_bqFilter === 'pending') rows = rows.filter(r => r.claimStatus === 'none' || r.claimStatus === 'draft');
+  if (_bqFilter === 'submitted') rows = rows.filter(r => r.claimStatus === 'submitted');
+  if (!rows.length) {
+    const msg = _bqFilter === 'pending' ? 'No visits waiting to be billed' : 'No submitted claims yet';
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:32px">${msg}</td></tr>`;
+    return;
+  }
+  const statusBadge = s => {
+    if (s === 'submitted') return '<span class="badge blue">✅ Submitted</span>';
+    if (s === 'draft') return '<span class="badge" style="background:var(--surface3);color:var(--text2)">📝 Draft</span>';
+    return '<span class="badge" style="background:rgba(227,179,65,0.15);color:#e3b341;border:1px solid rgba(227,179,65,0.3)">⏳ Needs Billing</span>';
+  };
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td style="font-weight:500">${r.patientName}</td>
+      <td style="font-family:var(--mono);font-size:11px">${r.mrn||'—'}</td>
+      <td style="font-family:var(--mono)">Visit #${r.visitNumber}</td>
+      <td style="font-size:11px;color:var(--text2)">${r.finalizedAt ? (() => { const d=r.finalizedAt.toDate?r.finalizedAt.toDate():new Date(r.finalizedAt); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); })() : '—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${r.finalizedBy||'—'}</td>
+      <td>${statusBadge(r.claimStatus)}</td>
+      <td style="white-space:nowrap">
+        ${r.claimStatus !== 'submitted' ? `<button class="btn primary sm" onclick="billNow('${r.patientId}')">Bill Now →</button>` : '<span style="font-size:11px;color:var(--text3)">Done</span>'}
+      </td>
+    </tr>`).join('');
+}
+
+async function billNow(patientId) {
+  await loadPatient(patientId);
+  showPage('chart');
+  setTimeout(() => {
+    const billingBtn = document.getElementById('tab-btn-billing');
+    if (billingBtn && billingBtn.style.display !== 'none') {
+      setTab('billing');
+      renderBillingTab();
+    }
+  }, 400);
 }
 
 function filterRxQueue(filter) {
