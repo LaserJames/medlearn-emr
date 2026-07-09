@@ -260,6 +260,16 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .campus-card-code { font-family: var(--mono); font-size: 12px; color: var(--accent-hover); background: var(--accent-soft); padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px; }
 .campus-card-meta { font-size: 11px; color: var(--text2); margin-top: 6px; }
 .campus-card-actions { display: flex; gap: 6px; margin-top: 12px; }
+.campus-folder { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 14px; overflow: hidden; width: 100%; }
+.campus-folder-header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; cursor: pointer; user-select: none; }
+.campus-folder-header:hover { background: var(--surface3); }
+.campus-folder-arrow { font-size: 11px; color: var(--text3); transition: transform 0.2s; }
+.campus-folder-arrow.open { transform: rotate(90deg); }
+.campus-folder-title { font-size: 15px; font-weight: 700; color: var(--text); flex: 1; }
+.campus-folder-meta { font-size: 11px; color: var(--text3); }
+.campus-folder-body { display: none; padding: 0 14px 14px; }
+.campus-folder-body.open { display: block; }
+.campus-folder-actions { margin-left: auto; display: flex; gap: 6px; }
 .campus-expiry { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .expiry-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
 .expiry-badge.good { background: var(--green-soft); color: var(--green); }
@@ -396,6 +406,19 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .cms-row:last-child { border-bottom: none; }
 .cms-sl-grid { display: grid; grid-template-columns: 86px 86px 34px 34px 110px 54px 80px 44px 44px 34px 90px; gap: 2px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--border); min-width: 760px; }
 .cms-sl-head { background: var(--surface3); font-size: 8px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* ── Code lookup (ICD-10 / CPT) ── */
+.code-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); max-height: 240px; overflow-y: auto; z-index: 30; box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+.code-dropdown.hidden { display: none; }
+.code-dropdown-item { padding: 6px 10px; font-size: 12px; cursor: pointer; border-bottom: 1px solid var(--border); color: var(--text); }
+.code-dropdown-item:last-child { border-bottom: none; }
+.code-dropdown-item:hover { background: var(--surface2); }
+.code-dropdown-item .cd-code { font-family: var(--mono); font-weight: 700; color: var(--accent); margin-right: 6px; }
+.code-dropdown-empty { padding: 8px 10px; font-size: 12px; color: var(--text3); }
+.code-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface3); border: 1px solid var(--border); border-radius: 14px; padding: 3px 6px 3px 10px; font-size: 11px; color: var(--text); }
+.code-chip .cc-code { font-family: var(--mono); font-weight: 700; color: var(--accent); }
+.code-chip .cc-x { cursor: pointer; color: var(--text3); font-weight: 700; padding: 0 4px; line-height: 1; }
+.code-chip .cc-x:hover { color: #e74c3c; }
 
 /* ── Grading Queue ── */
 .grade-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
@@ -762,7 +785,12 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
     <div id="page-campuses" class="page" style="display:none;overflow-y:auto;padding:28px;">
       <h1>🏫 Campus &amp; School Management</h1>
       <p class="page-sub">Add and manage schools and their registration codes. Changes take effect immediately — no redeploy needed.</p>
-      <button class="btn primary" onclick="openAddCampus()">+ Add New School / Campus</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+        <button class="btn primary" onclick="openAddCampus()">+ Add New Campus</button>
+        <button class="btn sm" onclick="openAddGroup()">📁 New School Group</button>
+        <button class="btn warning" onclick="runCampusFix()">🔧 Fix Missing Campus Assignments</button>
+      </div>
+      <div id="campus-fix-panel" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:18px"></div>
       <div class="campus-grid" id="campus-grid">
         <div style="color:var(--text3);font-size:13px;margin-top:8px">Loading campuses...</div>
       </div>
@@ -796,10 +824,32 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <select id="campus-status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
         <div class="hint">Inactive campuses cannot register new users.</div>
       </div>
+      <div class="mf"><label>School Group <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
+        <select id="campus-group-id">
+          <option value="">— No group —</option>
+        </select>
+        <div class="hint">Assign this campus to a school group folder to keep the Campuses page organized.</div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeM('modal-campus')">Cancel</button>
       <button class="btn primary" onclick="saveCampus()">Save Campus</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCHOOL GROUP ADD/EDIT -->
+<div class="overlay hidden" id="modal-group">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><h2>📁 School Group</h2><button class="modal-x" onclick="closeM('modal-group')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="group-edit-id" value="" />
+      <div class="mf"><label>Group Name *</label><input type="text" id="group-name" placeholder="e.g. ABC Medical Institute" /></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger sm" id="btn-delete-group" onclick="deleteGroup()" style="margin-right:auto;display:none">Delete Group</button>
+      <button class="btn" onclick="closeM('modal-group')">Cancel</button>
+      <button class="btn primary" onclick="saveGroup()">Save Group</button>
     </div>
   </div>
 </div>
@@ -1150,6 +1200,12 @@ P (Plan): Treatment, orders, follow-up"></textarea></div>
           </div>
           <div style="font-size:11px;color:var(--text3);margin-top:4px">✓ A chart will be created automatically when the appointment is saved.</div>
         </div>
+      </div>
+      <div class="mf" id="appt-campus-wrap" style="display:none">
+        <label>Campus <span style="color:#e74c3c">*</span></label>
+        <select id="appt-campus-id" style="width:100%;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);font-family:var(--font);font-size:13px;color:var(--text)">
+          <option value="">— Select campus —</option>
+        </select>
       </div>
       <div class="mf"><label>Chief Complaint / Reason for Visit</label><textarea id="appt-cc" placeholder="e.g. Sore throat, annual physical, follow-up for hypertension..." style="min-height:70px"></textarea></div>
       <div class="mf"><label>Notes (optional)</label><input type="text" id="appt-notes" placeholder="Insurance, callback number, special instructions..." /></div>
@@ -1636,6 +1692,7 @@ document.querySelectorAll('.c-tab').forEach(t => t.addEventListener('click', () 
   if (t.dataset.tab === 'rx') renderRxTab();
   if (t.dataset.tab === 'billing') renderBillingTab();
   if (t.dataset.tab === 'labels') renderLabelsTab();
+  if (t.dataset.tab === 'vitals') requestAnimationFrame(()=>{ drawVitalsChart(); updateVitalChipStyles(); });
 }));
 function setTab(name) {
   document.querySelectorAll('.c-tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
@@ -1707,7 +1764,21 @@ function renderOverview() {
 function renderVitals() {
   const vitals = currentPatient.vitals || [];
   document.getElementById('tab-vitals').innerHTML = `<div class="sc"><div class="sc-head"><h3>💓 Vital Signs History</h3><button class="btn primary sm" onclick="openM('modal-vitals')">+ Record Vitals</button></div><div class="sc-body">${
-    !vitals.length ? '<div class="empty-state"><div class="empty-icon">💓</div>No vitals recorded yet</div>' :
+    (vitals.length < 2 ? '' : `
+    <div style="margin-bottom:14px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn sm vchip" data-metric="bp" onclick="toggleVitalChart('bp')">BP</button>
+        <button class="btn sm vchip" data-metric="hr" onclick="toggleVitalChart('hr')">HR</button>
+        <button class="btn sm vchip" data-metric="spo2" onclick="toggleVitalChart('spo2')">SpO2</button>
+        <button class="btn sm vchip" data-metric="temp" onclick="toggleVitalChart('temp')">Temp</button>
+        <button class="btn sm vchip" data-metric="rr" onclick="toggleVitalChart('rr')">Resp Rate</button>
+      </div>
+      <div style="position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px">
+        <canvas id="vitals-chart" height="320" style="width:100%;height:320px;display:block" onmousemove="vitalsChartHover(event)" onmouseleave="vitalsChartLeave()"></canvas>
+        <div id="vitals-tooltip" style="position:absolute;display:none;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:11px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.25);z-index:10"></div>
+      </div>
+    </div>`) +
+    (!vitals.length ? '<div class="empty-state"><div class="empty-icon">💓</div>No vitals recorded yet</div>' :
     vitals.slice().reverse().map((v,ri)=>{
       const i = vitals.length-1-ri;
       return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
@@ -1732,8 +1803,173 @@ function renderVitals() {
         ${v.notes?`<div style="margin-top:8px;font-size:11px;color:var(--text2)">📝 ${v.notes}</div>`:''}
         ${v.performedBy?`<div style="margin-top:6px;font-size:11px;color:var(--text3)">👤 Performed by: <strong style="color:var(--text2)">${v.performedBy}</strong></div>`:''}
       </div>`;
-    }).join('')
+    }).join(''))
   }</div></div>`;
+  if (vitals.length >= 2) requestAnimationFrame(()=>{ drawVitalsChart(); updateVitalChipStyles(); });
+}
+
+// ─── Vitals trend chart ───
+const VITAL_METRIC_CFG = {
+  bp:   { label:'BP', unit:'mmHg', color:'#3498db', range:[90,120], scale:[40,200] },
+  hr:   { label:'HR', unit:'bpm', color:'#e74c3c', range:[60,100], scale:[30,180], get:v=>v.hr },
+  spo2: { label:'SpO2', unit:'%', color:'#2ecc71', range:[95,100], scale:[85,101], get:v=>v.spo2 },
+  temp: { label:'Temp', unit:'°F', color:'#f39c12', range:[97,99], scale:[95,105], get:v=>v.temp },
+  rr:   { label:'Resp Rate', unit:'/min', color:'#9b59b6', range:[12,20], scale:[6,32], get:v=>v.rr }
+};
+let vitalsChartActive = { bp:true, hr:true, spo2:false, temp:false, rr:false };
+let vitalsChartData = [];
+
+function toggleVitalChart(metric) {
+  vitalsChartActive[metric] = !vitalsChartActive[metric];
+  drawVitalsChart();
+  updateVitalChipStyles();
+}
+
+function updateVitalChipStyles() {
+  document.querySelectorAll('.vchip').forEach(b=>{
+    const cfg = VITAL_METRIC_CFG[b.dataset.metric];
+    if (vitalsChartActive[b.dataset.metric]) {
+      b.style.background = cfg.color; b.style.color = '#fff'; b.style.borderColor = cfg.color;
+    } else {
+      b.style.background = ''; b.style.color = ''; b.style.borderColor = '';
+    }
+  });
+}
+
+function drawLine(ctx, vitals, xFor, yFor, getVal, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  let started = false;
+  vitals.forEach((v,i)=>{
+    const val = getVal(v);
+    if (val===undefined || val===null || val==='') return;
+    const x = xFor(i), y = yFor(val);
+    if (!started) { ctx.moveTo(x,y); started = true; } else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.fillStyle = color;
+  vitals.forEach((v,i)=>{
+    const val = getVal(v);
+    if (val===undefined || val===null || val==='') return;
+    const x = xFor(i), y = yFor(val);
+    ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill();
+  });
+}
+
+function drawVitalsChart() {
+  const canvas = document.getElementById('vitals-chart');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width, H = 320;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  const vitals = (currentPatient.vitals||[]).filter(v=>v.time).slice().sort((a,b)=>new Date(a.time)-new Date(b.time));
+  vitalsChartData = vitals;
+  if (vitals.length < 2) return;
+
+  const padL=50, padR=20, padT=24, padB=36;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+  const times = vitals.map(v=>new Date(v.time).getTime());
+  const tMin = times[0], tRange = (times[times.length-1]-tMin) || 1;
+  const xFor = i => padL + (times[i]-tMin)/tRange*plotW;
+
+  const borderColor = getComputedStyle(document.body).getPropertyValue('--border').trim() || '#444';
+  const textColor = getComputedStyle(document.body).getPropertyValue('--text3').trim() || '#999';
+
+  // grid + x-axis labels
+  ctx.strokeStyle = borderColor;
+  ctx.fillStyle = textColor;
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  const labelCount = Math.min(vitals.length, 6);
+  for (let k=0;k<labelCount;k++) {
+    const idx = Math.round(k*(vitals.length-1)/(labelCount-1||1));
+    const x = xFor(idx);
+    ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+plotH); ctx.stroke();
+    const d = new Date(times[idx]);
+    ctx.fillText(`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`, x, H-padB+15);
+  }
+
+  Object.keys(vitalsChartActive).forEach(m=>{
+    if (!vitalsChartActive[m]) return;
+    const cfg = VITAL_METRIC_CFG[m];
+    const [sMin,sMax] = cfg.scale;
+    const yFor = val => padT + plotH - (val-sMin)/(sMax-sMin)*plotH;
+
+    const [nMin,nMax] = cfg.range;
+    ctx.fillStyle = cfg.color + '22';
+    const yTop = yFor(nMax), yBot = yFor(nMin);
+    ctx.fillRect(padL, yTop, plotW, yBot-yTop);
+
+    if (m==='bp') {
+      drawLine(ctx, vitals, xFor, yFor, v=>v.sbp, '#3498db');
+      drawLine(ctx, vitals, xFor, yFor, v=>v.dbp, '#85c1e9');
+    } else {
+      drawLine(ctx, vitals, xFor, yFor, cfg.get, cfg.color);
+    }
+  });
+
+  // legend
+  let lx = padL;
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'left';
+  Object.keys(vitalsChartActive).forEach(m=>{
+    if (!vitalsChartActive[m]) return;
+    const cfg = VITAL_METRIC_CFG[m];
+    ctx.fillStyle = cfg.color;
+    ctx.fillRect(lx, 4, 10, 10);
+    ctx.fillStyle = textColor;
+    const label = m==='bp' ? 'BP (SBP/DBP)' : `${cfg.label} (${cfg.unit})`;
+    ctx.fillText(label, lx+14, 13);
+    lx += ctx.measureText(label).width + 30;
+  });
+
+  canvas._chartGeo = { times, xFor };
+}
+
+function vitalsChartHover(e) {
+  const canvas = document.getElementById('vitals-chart');
+  const tip = document.getElementById('vitals-tooltip');
+  const geo = canvas && canvas._chartGeo;
+  if (!geo || !vitalsChartData.length) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  let best = 0, bestD = Infinity;
+  geo.times.forEach((t,i)=>{
+    const d = Math.abs(geo.xFor(i)-mx);
+    if (d<bestD) { bestD = d; best = i; }
+  });
+  if (bestD > 30) { tip.style.display = 'none'; return; }
+  const v = vitalsChartData[best];
+  let html = `<div style="font-weight:600;margin-bottom:4px">${fmtDT(v.time)}</div>`;
+  Object.keys(vitalsChartActive).forEach(m=>{
+    if (!vitalsChartActive[m]) return;
+    const cfg = VITAL_METRIC_CFG[m];
+    if (m==='bp') {
+      if (v.sbp) html += `<div><span style="color:#3498db">●</span> BP: ${v.sbp}/${v.dbp} mmHg</div>`;
+    } else {
+      const val = cfg.get(v);
+      if (val!==undefined && val!=='' && val!==null) html += `<div><span style="color:${cfg.color}">●</span> ${cfg.label}: ${val} ${cfg.unit}</div>`;
+    }
+  });
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  const rectW = canvas.getBoundingClientRect().width;
+  let left = geo.xFor(best)+12;
+  if (left + 160 > rectW) left = geo.xFor(best)-172;
+  tip.style.left = left+'px';
+  tip.style.top = '10px';
+}
+
+function vitalsChartLeave() {
+  const tip = document.getElementById('vitals-tooltip');
+  if (tip) tip.style.display = 'none';
 }
 
 // ═══════════════════════════════════════════
@@ -3104,10 +3340,52 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ── Barcode scanner support ──────────────────────────────────────────────────
+// Scanners act as keyboard wedges: rapid keystrokes ending with Enter.
+// Buffer chars that arrive <100ms apart; on Enter, attempt MRN lookup.
+(function() {
+  let _scanBuf = '';
+  let _scanTimer = null;
+  const SCAN_TIMEOUT = 100; // ms between keystrokes before buffer resets
+
+  document.addEventListener('keydown', function(e) {
+    // Ignore if user is focused in an input/textarea/select
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    // Ignore if no user is logged in
+    if (!currentUser) return;
+
+    if (e.key === 'Enter') {
+      const mrn = _scanBuf.trim().toUpperCase();
+      _scanBuf = '';
+      if (_scanTimer) { clearTimeout(_scanTimer); _scanTimer = null; }
+      if (mrn.length >= 3) {
+        const match = allPatients.find(p => (p.mrn||'').toUpperCase() === mrn);
+        if (match) {
+          loadPatient(match.id);
+          toast('📷 Barcode scanned — opening chart for ' + match.last + ', ' + match.first);
+        } else {
+          toast('No patient found for MRN: ' + mrn, 'error');
+        }
+      }
+      return;
+    }
+
+    // Only buffer printable single characters
+    if (e.key.length === 1) {
+      if (_scanTimer) clearTimeout(_scanTimer);
+      _scanBuf += e.key;
+      _scanTimer = setTimeout(() => { _scanBuf = ''; _scanTimer = null; }, SCAN_TIMEOUT);
+    }
+  });
+})();
+
 // ═══════════════════════════════════════════
 // CAMPUS MANAGER
 // ═══════════════════════════════════════════
 let allCampuses = [];
+let allGroups = [];
+let _openFolders = new Set();
 
 async function seedCampusesIfNeeded() {
   try {
@@ -3133,10 +3411,121 @@ async function seedCampusesIfNeeded() {
 async function loadCampuses() {
   document.getElementById('campus-grid').innerHTML = '<div style="color:var(--text3);font-size:13px">Loading...</div>';
   try {
-    const snap = await db.collection('campuses').orderBy('name').get();
-    allCampuses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderCampusGrid();
-  } catch(e) { document.getElementById('campus-grid').innerHTML = '<div style="color:var(--red);font-size:13px">Error loading campuses: ' + e.message + '</div>'; }
+    allCampuses = (await db.collection('campuses').orderBy('name').get()).docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) {
+    document.getElementById('campus-grid').innerHTML = '<div style="color:var(--red);font-size:13px">Error loading campuses: ' + e.message + '</div>';
+    return;
+  }
+  try {
+    allGroups = (await db.collection('campus_groups').orderBy('name').get()).docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) {
+    allGroups = []; // collection doesn't exist yet or rule not published — groups just won't show
+  }
+  renderCampusGrid();
+}
+
+async function runCampusFix() {
+  const panel = document.getElementById('campus-fix-panel');
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="color:var(--text3);font-size:13px">Scanning user accounts...</div>';
+
+  try {
+    // Load all users and campuses
+    const [usersSnap, campusSnap] = await Promise.all([
+      db.collection('users').get(),
+      db.collection('campuses').get()
+    ]);
+
+    const campuses = campusSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const broken = []; // users missing campusId or campusName
+
+    usersSnap.docs.forEach(doc => {
+      const u = { id: doc.id, ...doc.data() };
+      if (!u.campusId || !u.campusName) broken.push(u);
+    });
+
+    if (!broken.length) {
+      panel.innerHTML = `<div style="color:var(--green);font-weight:600">✓ All ${usersSnap.size} user accounts have campus assignments — nothing to fix.</div>`;
+      return;
+    }
+
+    // Group broken users by what we can infer
+    // Try to match via campusId already set but campusName missing, or vice versa
+    const fixable = [];
+    const unfixable = [];
+
+    broken.forEach(u => {
+      if (u.campusId) {
+        // Has campusId but missing campusName — easy fix
+        const campus = campuses.find(c => c.id === u.campusId);
+        if (campus) fixable.push({ user: u, campus, reason: 'Missing campusName' });
+        else unfixable.push({ user: u, reason: 'campusId set but campus not found in database' });
+      } else {
+        // No campusId at all — can't auto-assign safely
+        unfixable.push({ user: u, reason: 'No campusId — must be assigned manually' });
+      }
+    });
+
+    const fixableHTML = fixable.length ? `
+      <div style="margin-bottom:10px">
+        <div style="font-weight:600;margin-bottom:6px;color:var(--text)">✅ Auto-fixable (${fixable.length} accounts)</div>
+        <table class="dt" style="font-size:11px"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Fix</th></tr></thead><tbody>
+          ${fixable.map(f => `<tr>
+            <td>${f.user.displayName||'—'}</td>
+            <td style="font-family:var(--mono)">${f.user.email||'—'}</td>
+            <td>${f.user.role||'student'}</td>
+            <td style="color:var(--text2)">${f.reason} → will set campusName to <strong>${f.campus.name}</strong></td>
+          </tr>`).join('')}
+        </tbody></table>
+        <button class="btn primary" style="margin-top:10px" onclick="applyAllCampusFixes()">⚡ Apply All Fixes (${fixable.length} accounts)</button>
+      </div>` : '';
+
+    const unfixableHTML = unfixable.length ? `
+      <div>
+        <div style="font-weight:600;margin-bottom:6px;color:var(--text)">⚠️ Needs manual fix in Firestore (${unfixable.length} accounts)</div>
+        <table class="dt" style="font-size:11px"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Reason</th></tr></thead><tbody>
+          ${unfixable.map(f => `<tr>
+            <td>${f.user.displayName||'—'}</td>
+            <td style="font-family:var(--mono)">${f.user.email||'—'}</td>
+            <td>${f.user.role||'student'}</td>
+            <td style="color:#e74c3c">${f.reason}</td>
+          </tr>`).join('')}
+        </tbody></table>
+        <div style="margin-top:8px;font-size:11px;color:var(--text3)">These accounts have no campus code on record. Have each student log out and re-register with their campus code, or set <code>campusId</code> and <code>campusName</code> manually in Firestore → users → [their document].</div>
+      </div>` : '';
+
+    panel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700">🔧 Campus Assignment Scan — ${broken.length} of ${usersSnap.size} accounts need attention</div>
+        <button class="btn sm" onclick="document.getElementById('campus-fix-panel').style.display='none'">✕ Close</button>
+      </div>
+      ${fixableHTML}${unfixableHTML}`;
+
+    // Store fixable list for applyAllCampusFixes
+    window._campusFixList = fixable;
+
+  } catch(e) {
+    panel.innerHTML = `<div style="color:#e74c3c">Error scanning users: ${e.message}</div>`;
+  }
+}
+
+async function applyAllCampusFixes() {
+  const list = window._campusFixList || [];
+  if (!list.length) return;
+  const panel = document.getElementById('campus-fix-panel');
+  panel.innerHTML = `<div style="color:var(--text3)">Applying fixes to ${list.length} accounts...</div>`;
+  try {
+    const batch = db.batch();
+    list.forEach(({ user, campus }) => {
+      const ref = db.collection('users').doc(user.id);
+      batch.update(ref, { campusId: campus.id, campusName: campus.name });
+    });
+    await batch.commit();
+    panel.innerHTML = `<div style="color:var(--green);font-weight:600">✓ Fixed ${list.length} account${list.length!==1?'s':''} — campus assignments are now correct. Students need to log out and back in to see changes.</div>`;
+    window._campusFixList = [];
+  } catch(e) {
+    panel.innerHTML = `<div style="color:#e74c3c">Error applying fixes: ${e.message}</div>`;
+  }
 }
 
 function getExpiryInfo(subscriptionStart) {
@@ -3162,34 +3551,82 @@ function expiryBadgeHTML(subscriptionStart) {
   return `<span class="expiry-badge good">🟢 ${daysLeft}d left (${dateStr})</span>`;
 }
 
+function campusCardHTML(c) {
+  return `<div class="campus-card ${(c.status||'active') === 'inactive' ? 'inactive' : ''}">
+    <div class="campus-card-name">${c.name}</div>
+    <div class="campus-card-code">${c.code}</div>
+    <div class="campus-card-meta">
+      📍 ${c.city || 'Location not set'} &nbsp;·&nbsp;
+      <span class="badge ${(c.status||'active') === 'active' ? 'green' : 'red'}">${c.status||'active'}</span>
+      ${c.notes ? `<div style="margin-top:6px;color:var(--text3)">${c.notes}</div>` : ''}
+    </div>
+    <div class="campus-expiry">${expiryBadgeHTML(c.subscriptionStart)}</div>
+    <div class="campus-card-actions">
+      <button class="btn warning sm" onclick="editCampus('${c.id}')">✏ Edit</button>
+      <button class="btn sm" onclick="toggleCampusStatus('${c.id}','${c.status||'active'}')">${(c.status||'active') === 'active' ? 'Deactivate' : 'Activate'}</button>
+    </div>
+  </div>`;
+}
+
 function renderCampusGrid() {
   const grid = document.getElementById('campus-grid');
   if (!allCampuses.length) {
     grid.innerHTML = '<div style="color:var(--text3);font-size:13px;margin-top:8px">No campuses yet. Add your first one above.</div>';
     return;
   }
-  grid.innerHTML = allCampuses.map(c => `
-    <div class="campus-card ${(c.status||'active') === 'inactive' ? 'inactive' : ''}">
-      <div class="campus-card-name">${c.name}</div>
-      <div class="campus-card-code">${c.code}</div>
-      <div class="campus-card-meta">
-        📍 ${c.city || 'Location not set'} &nbsp;·&nbsp;
-        <span class="badge ${(c.status||'active') === 'active' ? 'green' : 'red'}">${c.status||'active'}</span>
-        ${c.notes ? `<div style="margin-top:6px;color:var(--text3)">${c.notes}</div>` : ''}
+
+  let html = '';
+
+  // Render group folders
+  allGroups.forEach(g => {
+    const members = allCampuses.filter(c => c.groupId === g.id);
+    const isOpen = _openFolders.has(g.id);
+    html += `<div class="campus-folder">
+      <div class="campus-folder-header" onclick="toggleFolder('${g.id}')">
+        <span class="campus-folder-arrow ${isOpen ? 'open' : ''}">▶</span>
+        <span style="font-size:18px">📁</span>
+        <span class="campus-folder-title">${g.name}</span>
+        <span class="campus-folder-meta">${members.length} campus${members.length !== 1 ? 'es' : ''}</span>
+        <div class="campus-folder-actions" onclick="event.stopPropagation()">
+          <button class="btn warning sm" onclick="editGroup('${g.id}')">✏ Edit</button>
+        </div>
       </div>
-      <div class="campus-expiry">${expiryBadgeHTML(c.subscriptionStart)}</div>
-      <div class="campus-card-actions">
-        <button class="btn warning sm" onclick="editCampus('${c.id}')">✏ Edit</button>
-        <button class="btn sm" onclick="toggleCampusStatus('${c.id}','${c.status||'active'}')">${(c.status||'active') === 'active' ? 'Deactivate' : 'Activate'}</button>
+      <div class="campus-folder-body ${isOpen ? 'open' : ''}">
+        ${members.length
+          ? `<div class="campus-grid" style="margin-top:0">${members.map(campusCardHTML).join('')}</div>`
+          : '<div style="color:var(--text3);font-size:12px;padding:8px 4px">No campuses in this group yet — edit a campus and assign it here.</div>'
+        }
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  });
+
+  // Ungrouped campuses
+  const ungrouped = allCampuses.filter(c => !c.groupId || !allGroups.find(g => g.id === c.groupId));
+  if (ungrouped.length) {
+    if (allGroups.length) html += `<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 6px">Ungrouped</div>`;
+    html += `<div class="campus-grid" style="margin-top:0">${ungrouped.map(campusCardHTML).join('')}</div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+function toggleFolder(groupId) {
+  if (_openFolders.has(groupId)) _openFolders.delete(groupId);
+  else _openFolders.add(groupId);
+  renderCampusGrid();
+}
+
+function populateGroupDropdown(selectedId = '') {
+  const sel = document.getElementById('campus-group-id');
+  sel.innerHTML = '<option value="">— No group —</option>' +
+    allGroups.map(g => `<option value="${g.id}" ${g.id === selectedId ? 'selected' : ''}>${g.name}</option>`).join('');
 }
 
 function openAddCampus() {
   document.getElementById('campus-edit-id').value = '';
   ['campus-name','campus-code','campus-city','campus-notes','campus-sub-start'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('campus-status').value = 'active';
+  populateGroupDropdown();
   openM('modal-campus');
 }
 
@@ -3203,6 +3640,7 @@ function editCampus(id) {
   document.getElementById('campus-notes').value = c.notes || '';
   document.getElementById('campus-sub-start').value = c.subscriptionStart || '';
   document.getElementById('campus-status').value = c.status || 'active';
+  populateGroupDropdown(c.groupId || '');
   openM('modal-campus');
 }
 
@@ -3213,24 +3651,81 @@ async function saveCampus() {
   const notes = document.getElementById('campus-notes').value.trim();
   const status = document.getElementById('campus-status').value;
   const subscriptionStart = document.getElementById('campus-sub-start').value || '';
+  const groupId = document.getElementById('campus-group-id').value || '';
   const editId = document.getElementById('campus-edit-id').value;
   if (!name) { toast('Campus name is required', 'error'); return; }
   if (!code) { toast('Registration code is required', 'error'); return; }
-  // Check for duplicate code
   const dupCheck = await db.collection('campuses').where('code', '==', code).get();
   const isDup = dupCheck.docs.some(d => d.id !== editId);
   if (isDup) { toast('That registration code is already in use', 'error'); return; }
   try {
     if (editId) {
-      await db.collection('campuses').doc(editId).update({ name, code, city, notes, status, subscriptionStart });
+      await db.collection('campuses').doc(editId).update({ name, code, city, notes, status, subscriptionStart, groupId });
       toast('Campus updated');
     } else {
-      await db.collection('campuses').add({ name, code, city, notes, status, subscriptionStart, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await db.collection('campuses').add({ name, code, city, notes, status, subscriptionStart, groupId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       toast(name + ' added — code: ' + code);
     }
     closeM('modal-campus');
     loadCampuses();
   } catch(e) { toast('Error saving campus: ' + e.message, 'error'); }
+}
+
+// ── School Group CRUD ──
+function openAddGroup() {
+  document.getElementById('group-edit-id').value = '';
+  document.getElementById('group-name').value = '';
+  document.getElementById('btn-delete-group').style.display = 'none';
+  openM('modal-group');
+}
+
+function editGroup(id) {
+  const g = allGroups.find(x => x.id === id);
+  if (!g) return;
+  document.getElementById('group-edit-id').value = id;
+  document.getElementById('group-name').value = g.name || '';
+  document.getElementById('btn-delete-group').style.display = '';
+  openM('modal-group');
+}
+
+async function saveGroup() {
+  const name = document.getElementById('group-name').value.trim();
+  const editId = document.getElementById('group-edit-id').value;
+  if (!name) { toast('Group name is required', 'error'); return; }
+  try {
+    if (editId) {
+      await db.collection('campus_groups').doc(editId).update({ name });
+      toast('Group renamed');
+    } else {
+      await db.collection('campus_groups').add({ name, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      toast('Group "' + name + '" created');
+    }
+    closeM('modal-group');
+    loadCampuses();
+  } catch(e) { toast('Error saving group: ' + e.message, 'error'); }
+}
+
+async function deleteGroup() {
+  const id = document.getElementById('group-edit-id').value;
+  if (!id) return;
+  const g = allGroups.find(x => x.id === id);
+  const memberCount = allCampuses.filter(c => c.groupId === id).length;
+  const msg = memberCount
+    ? `Delete group "${g?.name}"? The ${memberCount} campus(es) inside will become ungrouped.`
+    : `Delete group "${g?.name}"?`;
+  if (!confirm(msg)) return;
+  try {
+    // Ungroup member campuses
+    const batch = db.batch();
+    allCampuses.filter(c => c.groupId === id).forEach(c => {
+      batch.update(db.collection('campuses').doc(c.id), { groupId: '' });
+    });
+    await batch.commit();
+    await db.collection('campus_groups').doc(id).delete();
+    toast('Group deleted');
+    closeM('modal-group');
+    loadCampuses();
+  } catch(e) { toast('Error deleting group: ' + e.message, 'error'); }
 }
 
 async function checkRenewalBanner() {
@@ -3268,7 +3763,7 @@ async function checkRenewalBanner() {
 // ═══════════════════════════════════════════
 // PROGRAM / ROLE HELPERS
 // ═══════════════════════════════════════════
-function userProgram() { return currentUserProfile?.program || null; }
+function userProgram() { return currentUserProfile?.program || 'medical_assisting'; }
 function userRole() { return currentUserProfile?.role || 'student'; }
 function isInstructor() { return userRole() === 'instructor' || userRole() === 'admin'; }
 function canWrite() {
@@ -3490,6 +3985,354 @@ async function saveRxOrder() {
 }
 
 // ═══════════════════════════════════════════
+// CPT CODES — common outpatient procedure codes (local lookup)
+// ═══════════════════════════════════════════
+const CPT_CODES = [
+  // Office / outpatient E/M — new patient
+  {code:'99201',desc:'Office/outpatient visit, new patient, straightforward (deprecated)'},
+  {code:'99202',desc:'Office/outpatient visit, new patient, straightforward, 15-29 min'},
+  {code:'99203',desc:'Office/outpatient visit, new patient, low complexity, 30-44 min'},
+  {code:'99204',desc:'Office/outpatient visit, new patient, moderate complexity, 45-59 min'},
+  {code:'99205',desc:'Office/outpatient visit, new patient, high complexity, 60-74 min'},
+  // Office / outpatient E/M — established patient
+  {code:'99211',desc:'Office/outpatient visit, established patient, minimal'},
+  {code:'99212',desc:'Office/outpatient visit, established patient, straightforward, 10-19 min'},
+  {code:'99213',desc:'Office/outpatient visit, established patient, low complexity, 20-29 min'},
+  {code:'99214',desc:'Office/outpatient visit, established patient, moderate complexity, 30-39 min'},
+  {code:'99215',desc:'Office/outpatient visit, established patient, high complexity, 40-54 min'},
+  // Preventive medicine — new patient
+  {code:'99381',desc:'Preventive visit, new patient, infant (under 1 year)'},
+  {code:'99382',desc:'Preventive visit, new patient, early childhood (1-4 years)'},
+  {code:'99383',desc:'Preventive visit, new patient, late childhood (5-11 years)'},
+  {code:'99384',desc:'Preventive visit, new patient, adolescent (12-17 years)'},
+  {code:'99385',desc:'Preventive visit, new patient, 18-39 years'},
+  {code:'99386',desc:'Preventive visit, new patient, 40-64 years'},
+  {code:'99387',desc:'Preventive visit, new patient, 65+ years'},
+  // Preventive medicine — established patient
+  {code:'99391',desc:'Preventive visit, established patient, infant (under 1 year)'},
+  {code:'99392',desc:'Preventive visit, established patient, early childhood (1-4 years)'},
+  {code:'99393',desc:'Preventive visit, established patient, late childhood (5-11 years)'},
+  {code:'99394',desc:'Preventive visit, established patient, adolescent (12-17 years)'},
+  {code:'99395',desc:'Preventive visit, established patient, 18-39 years'},
+  {code:'99396',desc:'Preventive visit, established patient, 40-64 years'},
+  {code:'99397',desc:'Preventive visit, established patient, 65+ years'},
+  // Medicare wellness / annual exams
+  {code:'G0438',desc:'Annual wellness visit, initial (Medicare)'},
+  {code:'G0439',desc:'Annual wellness visit, subsequent (Medicare)'},
+  {code:'G0402',desc:'Initial preventive physical exam (Medicare "Welcome to Medicare")'},
+  // Preventive counseling
+  {code:'99401',desc:'Preventive counseling, individual, 15 min'},
+  {code:'99402',desc:'Preventive counseling, individual, 30 min'},
+  {code:'99403',desc:'Preventive counseling, individual, 45 min'},
+  {code:'99404',desc:'Preventive counseling, individual, 60 min'},
+  {code:'99406',desc:'Smoking/tobacco cessation counseling, 3-10 min'},
+  {code:'99407',desc:'Smoking/tobacco cessation counseling, >10 min'},
+  {code:'99408',desc:'Alcohol/substance abuse screening and brief intervention, 15-30 min'},
+  {code:'99409',desc:'Alcohol/substance abuse screening and brief intervention, >30 min'},
+  {code:'99411',desc:'Preventive counseling, group, 30 min'},
+  {code:'99412',desc:'Preventive counseling, group, 60 min'},
+  // Telehealth / virtual
+  {code:'99421',desc:'Online digital E/M, established patient, 5-10 min'},
+  {code:'99422',desc:'Online digital E/M, established patient, 11-20 min'},
+  {code:'99423',desc:'Online digital E/M, established patient, 21+ min'},
+  {code:'99441',desc:'Telephone E/M service, 5-10 min'},
+  {code:'99442',desc:'Telephone E/M service, 11-20 min'},
+  {code:'99443',desc:'Telephone E/M service, 21-30 min'},
+  // Care management
+  {code:'99490',desc:'Chronic care management, 20 min/month'},
+  {code:'99497',desc:'Advance care planning, first 30 min'},
+  {code:'99495',desc:'Transitional care management, moderate complexity'},
+  {code:'99496',desc:'Transitional care management, high complexity'},
+  // Consultations
+  {code:'99241',desc:'Office consultation, new or established patient, problem focused'},
+  {code:'99242',desc:'Office consultation, new or established patient, expanded problem focused'},
+  {code:'99243',desc:'Office consultation, new or established patient, detailed'},
+  {code:'99244',desc:'Office consultation, new or established patient, comprehensive, moderate complexity'},
+  {code:'99245',desc:'Office consultation, new or established patient, comprehensive, high complexity'},
+  // Immunization administration
+  {code:'90460',desc:'Immunization admin through 18 yrs, with counseling, first component'},
+  {code:'90461',desc:'Immunization admin through 18 yrs, with counseling, each additional component'},
+  {code:'90471',desc:'Immunization administration, one vaccine'},
+  {code:'90472',desc:'Immunization administration, each additional vaccine'},
+  {code:'90473',desc:'Immunization administration, intranasal/oral, one vaccine'},
+  {code:'90474',desc:'Immunization administration, intranasal/oral, each additional vaccine'},
+  // Common vaccines
+  {code:'90471',desc:'Vaccine administration (injectable, single)'},
+  {code:'90653',desc:'Influenza vaccine, recombinant, preservative free'},
+  {code:'90656',desc:'Influenza vaccine, split virus, preservative free'},
+  {code:'90662',desc:'Influenza vaccine, high-dose, preservative free'},
+  {code:'90670',desc:'Pneumococcal conjugate vaccine, 13-valent (PCV13)'},
+  {code:'90732',desc:'Pneumococcal polysaccharide vaccine, 23-valent (PPSV23)'},
+  {code:'90686',desc:'Influenza vaccine, quadrivalent, preservative free, 0.5mL'},
+  {code:'90715',desc:'Tdap vaccine, 7+ years'},
+  {code:'90707',desc:'MMR vaccine'},
+  {code:'90716',desc:'Varicella vaccine'},
+  {code:'90713',desc:'Poliovirus vaccine (IPV)'},
+  {code:'90633',desc:'Hepatitis A vaccine, pediatric, 2-dose'},
+  {code:'90744',desc:'Hepatitis B vaccine, pediatric/adolescent, 3-dose'},
+  {code:'90746',desc:'Hepatitis B vaccine, adult, 3-dose'},
+  {code:'90649',desc:'HPV vaccine, quadrivalent (HPV4)'},
+  {code:'90651',desc:'HPV vaccine, 9-valent (HPV9)'},
+  {code:'90734',desc:'Meningococcal vaccine, ACWY'},
+  {code:'90619',desc:'Meningococcal vaccine, group B'},
+  {code:'90460',desc:'Immunization admin, vaccine + counseling (under 19)'},
+  {code:'91300',desc:'COVID-19 vaccine, Pfizer'},
+  {code:'91301',desc:'COVID-19 vaccine, Moderna'},
+  {code:'91304',desc:'COVID-19 vaccine, Novavax'},
+  {code:'90471',desc:'COVID-19/other vaccine administration, single dose'},
+  // Injections
+  {code:'96372',desc:'Therapeutic/prophylactic/diagnostic injection, subcutaneous or intramuscular'},
+  {code:'96374',desc:'Therapeutic injection, IV push, single drug'},
+  {code:'96375',desc:'Therapeutic injection, IV push, additional sequential drug'},
+  {code:'96401',desc:'Chemotherapy administration, subcutaneous or intramuscular'},
+  {code:'J0696',desc:'Injection, ceftriaxone sodium, per 250 mg'},
+  {code:'J1100',desc:'Injection, dexamethasone sodium phosphate, 1 mg'},
+  {code:'J3420',desc:'Injection, vitamin B-12 (cyanocobalamin), up to 1000 mcg'},
+  {code:'J0702',desc:'Injection, betamethasone acetate and phosphate'},
+  // Wound care / skin procedures
+  {code:'12001',desc:'Simple repair of superficial wounds, 2.5cm or less'},
+  {code:'12002',desc:'Simple repair of superficial wounds, 2.6-7.5cm'},
+  {code:'12011',desc:'Simple repair, face/ears/eyelids/nose/lips, 2.5cm or less'},
+  {code:'12013',desc:'Simple repair, face/ears/eyelids/nose/lips, 2.6-5.0cm'},
+  {code:'12031',desc:'Layer closure of wounds, 2.5cm or less'},
+  {code:'13160',desc:'Secondary wound closure'},
+  {code:'11042',desc:'Debridement, subcutaneous tissue, first 20 sq cm'},
+  {code:'11043',desc:'Debridement, muscle and/or fascia, first 20 sq cm'},
+  {code:'11055',desc:'Trimming of skin lesion (corn/callus), single'},
+  {code:'11056',desc:'Trimming of skin lesions, 2-4 lesions'},
+  {code:'11057',desc:'Trimming of skin lesions, more than 4 lesions'},
+  {code:'11200',desc:'Removal of skin tags, up to 15 lesions'},
+  {code:'11300',desc:'Shave removal of skin lesion, trunk/arms/legs, lesion 0.5cm or less'},
+  {code:'11400',desc:'Excision, benign skin lesion, trunk/arms/legs, 0.5cm or less'},
+  {code:'11401',desc:'Excision, benign skin lesion, trunk/arms/legs, 0.6-1.0cm'},
+  {code:'11600',desc:'Excision, malignant skin lesion, trunk/arms/legs, 0.5cm or less'},
+  {code:'17000',desc:'Destruction of premalignant lesion (e.g., actinic keratosis), first lesion'},
+  {code:'17003',desc:'Destruction of premalignant lesions, 2-14 lesions, each'},
+  {code:'17110',desc:'Destruction of benign lesions (e.g., warts), up to 14 lesions'},
+  {code:'10060',desc:'Incision and drainage of abscess, simple'},
+  {code:'10061',desc:'Incision and drainage of abscess, complicated/multiple'},
+  {code:'10120',desc:'Incision and removal of foreign body, subcutaneous tissue, simple'},
+  {code:'20550',desc:'Injection, single tendon sheath or ligament'},
+  {code:'20600',desc:'Arthrocentesis/injection, small joint (fingers, toes)'},
+  {code:'20605',desc:'Arthrocentesis/injection, intermediate joint (wrist, elbow, ankle)'},
+  {code:'20610',desc:'Arthrocentesis/injection, major joint (shoulder, hip, knee)'},
+  {code:'29125',desc:'Application of short arm splint, static'},
+  {code:'29130',desc:'Application of finger splint, static'},
+  {code:'29515',desc:'Application of short leg splint'},
+  {code:'29540',desc:'Strapping, ankle and/or foot'},
+  // Ear/Nose/Throat
+  {code:'69210',desc:'Removal of impacted cerumen, one or both ears'},
+  {code:'69200',desc:'Removal of foreign body from external auditory canal'},
+  {code:'30300',desc:'Removal of foreign body, intranasal'},
+  {code:'30901',desc:'Control of nasal hemorrhage, anterior, simple'},
+  {code:'42820',desc:'Tonsillectomy and adenoidectomy, under age 12'},
+  // Eye
+  {code:'65205',desc:'Removal of foreign body, conjunctival, superficial'},
+  {code:'92002',desc:'Eye exam, new patient, intermediate'},
+  {code:'92004',desc:'Eye exam, new patient, comprehensive'},
+  {code:'92012',desc:'Eye exam, established patient, intermediate'},
+  {code:'92014',desc:'Eye exam, established patient, comprehensive'},
+  {code:'92551',desc:'Pure tone audiometry, air only'},
+  {code:'92552',desc:'Pure tone audiometry, air and bone'},
+  {code:'92557',desc:'Comprehensive audiometry'},
+  {code:'92567',desc:'Tympanometry'},
+  // Vision screening
+  {code:'99173',desc:'Visual acuity screening test'},
+  {code:'92015',desc:'Determination of refractive state (refraction)'},
+  // Cardiology / pulmonary
+  {code:'93000',desc:'Electrocardiogram (ECG), complete with interpretation and report'},
+  {code:'93005',desc:'Electrocardiogram (ECG), tracing only'},
+  {code:'93010',desc:'Electrocardiogram (ECG), interpretation and report only'},
+  {code:'93040',desc:'Rhythm ECG, 1-3 leads, with interpretation'},
+  {code:'93306',desc:'Echocardiogram, transthoracic, complete with Doppler'},
+  {code:'93880',desc:'Duplex scan of carotid arteries'},
+  {code:'93922',desc:'Limited bilateral noninvasive vascular studies'},
+  {code:'94010',desc:'Spirometry, including graphic record'},
+  {code:'94060',desc:'Spirometry pre/post bronchodilator'},
+  {code:'94640',desc:'Pressurized/nonpressurized inhalation treatment (nebulizer)'},
+  {code:'94664',desc:'Demonstration/evaluation of patient use of inhaler/nebulizer'},
+  {code:'94760',desc:'Pulse oximetry, single determination'},
+  {code:'94761',desc:'Pulse oximetry, multiple determinations'},
+  // Neurology
+  {code:'95810',desc:'Polysomnography, sleep staging, age 6+'},
+  {code:'95816',desc:'Electroencephalogram (EEG), awake and drowsy'},
+  {code:'95860',desc:'Electromyography (EMG), one extremity'},
+  {code:'95885',desc:'Needle EMG, limited study'},
+  // Musculoskeletal / PT
+  {code:'97110',desc:'Therapeutic exercise, each 15 min'},
+  {code:'97112',desc:'Neuromuscular reeducation, each 15 min'},
+  {code:'97116',desc:'Gait training therapy, each 15 min'},
+  {code:'97140',desc:'Manual therapy techniques, each 15 min'},
+  {code:'97161',desc:'Physical therapy evaluation, low complexity'},
+  {code:'97162',desc:'Physical therapy evaluation, moderate complexity'},
+  {code:'97163',desc:'Physical therapy evaluation, high complexity'},
+  {code:'97164',desc:'Physical therapy re-evaluation'},
+  {code:'97597',desc:'Debridement, open wound, first 20 sq cm'},
+  // Mental health
+  {code:'90791',desc:'Psychiatric diagnostic evaluation, no medical services'},
+  {code:'90792',desc:'Psychiatric diagnostic evaluation, with medical services'},
+  {code:'90832',desc:'Psychotherapy, 30 min'},
+  {code:'90834',desc:'Psychotherapy, 45 min'},
+  {code:'90837',desc:'Psychotherapy, 60 min'},
+  {code:'90839',desc:'Psychotherapy for crisis, first 60 min'},
+  {code:'96127',desc:'Brief emotional/behavioral assessment (e.g., depression screening)'},
+  {code:'96116',desc:'Neurobehavioral status exam'},
+  {code:'96136',desc:'Psychological/neuropsych test administration, first 30 min'},
+  // Obstetrics / Gynecology
+  {code:'59400',desc:'Routine obstetric care, vaginal delivery, antepartum and postpartum'},
+  {code:'59410',desc:'Vaginal delivery, including postpartum care'},
+  {code:'59025',desc:'Fetal non-stress test'},
+  {code:'76801',desc:'Obstetric ultrasound, first trimester, single fetus'},
+  {code:'76805',desc:'Obstetric ultrasound, second/third trimester, single fetus'},
+  {code:'58300',desc:'Insertion of intrauterine device (IUD)'},
+  {code:'58301',desc:'Removal of intrauterine device (IUD)'},
+  {code:'57452',desc:'Colposcopy of the cervix'},
+  {code:'88150',desc:'Cytopathology, cervical/vaginal (Pap smear), manual screening'},
+  {code:'88175',desc:'Cytopathology, cervical/vaginal (Pap smear), automated screening'},
+  // Urology
+  {code:'51702',desc:'Insertion of temporary indwelling bladder catheter, simple'},
+  {code:'51798',desc:'Bladder ultrasound for post-void residual'},
+  {code:'54050',desc:'Destruction of lesion, penis, simple (e.g., wart)'},
+  {code:'55250',desc:'Vasectomy, unilateral or bilateral'},
+  // Gastroenterology
+  {code:'45330',desc:'Flexible sigmoidoscopy, diagnostic'},
+  {code:'45378',desc:'Colonoscopy, diagnostic'},
+  {code:'45380',desc:'Colonoscopy with biopsy'},
+  {code:'45385',desc:'Colonoscopy with removal of polyp(s) by snare technique'},
+  {code:'43235',desc:'Upper GI endoscopy, diagnostic'},
+  {code:'82270',desc:'Fecal occult blood test, screening'},
+  // Radiology
+  {code:'70450',desc:'CT head/brain without contrast'},
+  {code:'70486',desc:'CT maxillofacial without contrast'},
+  {code:'71045',desc:'Chest X-ray, single view'},
+  {code:'71046',desc:'Chest X-ray, two views'},
+  {code:'71250',desc:'CT thorax without contrast'},
+  {code:'72010',desc:'X-ray, spine, entire, survey study'},
+  {code:'72040',desc:'X-ray, cervical spine, 2-3 views'},
+  {code:'72100',desc:'X-ray, lumbosacral spine, 2-3 views'},
+  {code:'72110',desc:'X-ray, lumbosacral spine, minimum 4 views'},
+  {code:'72148',desc:'MRI lumbar spine without contrast'},
+  {code:'73030',desc:'X-ray, shoulder, complete'},
+  {code:'73070',desc:'X-ray, elbow, 2 views'},
+  {code:'73090',desc:'X-ray, forearm, 2 views'},
+  {code:'73100',desc:'X-ray, wrist, 2 views'},
+  {code:'73110',desc:'X-ray, wrist, complete, minimum 3 views'},
+  {code:'73120',desc:'X-ray, hand, 2 views'},
+  {code:'73130',desc:'X-ray, hand, minimum 3 views'},
+  {code:'73502',desc:'X-ray, hip, unilateral, 2-3 views'},
+  {code:'73560',desc:'X-ray, knee, 1-2 views'},
+  {code:'73562',desc:'X-ray, knee, 3 views'},
+  {code:'73610',desc:'X-ray, ankle, 3 views'},
+  {code:'73630',desc:'X-ray, foot, 3 views'},
+  {code:'74018',desc:'X-ray, abdomen, single view'},
+  {code:'74176',desc:'CT abdomen and pelvis without contrast'},
+  {code:'76700',desc:'Ultrasound, abdomen, complete'},
+  {code:'76705',desc:'Ultrasound, abdomen, limited'},
+  {code:'76770',desc:'Ultrasound, retroperitoneal, complete'},
+  {code:'76830',desc:'Ultrasound, transvaginal'},
+  {code:'76856',desc:'Ultrasound, pelvic, complete'},
+  {code:'77067',desc:'Screening mammography, bilateral'},
+  {code:'77063',desc:'Screening digital breast tomosynthesis, bilateral'},
+  {code:'77080',desc:'DXA bone density study, axial skeleton'},
+  // Laboratory — chemistry panels
+  {code:'80048',desc:'Basic metabolic panel'},
+  {code:'80050',desc:'General health panel'},
+  {code:'80053',desc:'Comprehensive metabolic panel'},
+  {code:'80061',desc:'Lipid panel'},
+  {code:'80069',desc:'Renal function panel'},
+  {code:'80076',desc:'Hepatic function panel'},
+  {code:'80100',desc:'Drug screen, qualitative, multiple classes'},
+  {code:'80305',desc:'Drug test, presumptive, single procedure'},
+  {code:'80307',desc:'Drug test, presumptive, instrument-based'},
+  // Laboratory — endocrine
+  {code:'83036',desc:'Hemoglobin A1c'},
+  {code:'83002',desc:'Gonadotropin (FSH/LH)'},
+  {code:'84443',desc:'Thyroid stimulating hormone (TSH)'},
+  {code:'84439',desc:'Free thyroxine (Free T4)'},
+  {code:'84436',desc:'Total thyroxine (T4)'},
+  {code:'84480',desc:'Triiodothyronine (T3)'},
+  {code:'82947',desc:'Glucose, quantitative, blood'},
+  {code:'82950',desc:'Glucose tolerance test, post glucose dose'},
+  {code:'82951',desc:'Glucose tolerance test, three specimens'},
+  {code:'83001',desc:'Follicle stimulating hormone (FSH)'},
+  {code:'84153',desc:'Prostate specific antigen (PSA), total'},
+  {code:'84702',desc:'Quantitative human chorionic gonadotropin (hCG), serum'},
+  {code:'81025',desc:'Urine pregnancy test, visual color comparison'},
+  // Laboratory — hematology
+  {code:'85025',desc:'Complete blood count (CBC) with differential, automated'},
+  {code:'85027',desc:'Complete blood count (CBC), automated, without differential'},
+  {code:'85610',desc:'Prothrombin time (PT)'},
+  {code:'85730',desc:'Partial thromboplastin time (PTT)'},
+  {code:'85049',desc:'Platelet count, automated'},
+  {code:'85651',desc:'Erythrocyte sedimentation rate (ESR), non-automated'},
+  // Laboratory — urinalysis / micro
+  {code:'81001',desc:'Urinalysis with microscopy, automated'},
+  {code:'81002',desc:'Urinalysis without microscopy, non-automated'},
+  {code:'81003',desc:'Urinalysis without microscopy, automated'},
+  {code:'81007',desc:'Urinalysis, bacteriuria screen'},
+  {code:'87086',desc:'Urine culture, quantitative colony count'},
+  {code:'87880',desc:'Strep A, rapid antigen test'},
+  {code:'87804',desc:'Influenza, rapid antigen test'},
+  {code:'87502',desc:'Influenza A and B, multiplex molecular assay'},
+  {code:'87635',desc:'SARS-CoV-2 (COVID-19), molecular assay'},
+  {code:'87426',desc:'SARS-CoV-2/COVID-19, antigen detection'},
+  {code:'87340',desc:'Hepatitis B surface antigen (HBsAg)'},
+  {code:'87389',desc:'HIV-1 antigen/antibody, combination assay'},
+  {code:'87491',desc:'Chlamydia trachomatis, amplified probe'},
+  {code:'87591',desc:'Neisseria gonorrhoeae, amplified probe'},
+  {code:'86592',desc:'Syphilis test (RPR), qualitative'},
+  {code:'86701',desc:'HIV-1 antibody'},
+  {code:'87210',desc:'Wet mount, KOH prep for fungi/parasites'},
+  {code:'87081',desc:'Culture, presumptive, pathogenic organisms, screening'},
+  {code:'86403',desc:'Particle agglutination, screen (e.g., mono test)'},
+  {code:'86308',desc:'Heterophile antibody (mono spot)'},
+  // Laboratory — lipid/cardiac/renal markers
+  {code:'82550',desc:'Creatine kinase (CK), total'},
+  {code:'82565',desc:'Creatinine, blood'},
+  {code:'84520',desc:'Urea nitrogen (BUN), quantitative'},
+  {code:'84450',desc:'Transferase, aspartate amino (AST)'},
+  {code:'84460',desc:'Transferase, alanine amino (ALT)'},
+  {code:'82728',desc:'Ferritin'},
+  {code:'83540',desc:'Iron, total'},
+  {code:'83550',desc:'Iron binding capacity'},
+  {code:'82306',desc:'Vitamin D, 25-hydroxy'},
+  {code:'82607',desc:'Vitamin B-12 (cyanocobalamin)'},
+  {code:'82746',desc:'Folic acid, serum'},
+  {code:'84100',desc:'Phosphorus, inorganic'},
+  {code:'82310',desc:'Calcium, total'},
+  {code:'84132',desc:'Potassium, serum'},
+  {code:'84295',desc:'Sodium, serum'},
+  {code:'82374',desc:'Carbon dioxide (bicarbonate)'},
+  {code:'85018',desc:'Hemoglobin, blood'},
+  {code:'85014',desc:'Hematocrit'},
+  // Allergy / immunology
+  {code:'95004',desc:'Percutaneous allergy skin tests, single test'},
+  {code:'95115',desc:'Allergen immunotherapy injection, single injection'},
+  {code:'95117',desc:'Allergen immunotherapy injections, two or more injections'},
+  // Misc / supplies
+  {code:'99070',desc:'Supplies and materials provided by physician over and above usual'},
+  {code:'A4550',desc:'Surgical trays'},
+  {code:'A4206',desc:'Syringe with needle, sterile, 1cc'},
+  {code:'Q0091',desc:'Screening Pap smear, obtaining/preparing/conveyance of specimen'},
+  {code:'G0463',desc:'Hospital outpatient clinic visit for assessment and management'},
+  {code:'G0008',desc:'Administration of influenza virus vaccine'},
+  {code:'G0009',desc:'Administration of pneumococcal vaccine'},
+  {code:'G0010',desc:'Administration of hepatitis B vaccine'},
+  {code:'90460',desc:'Immunization administration with counseling, ages 0-18'},
+  // Skin / suture removal & misc minor procedures
+  {code:'15852',desc:'Dressing change under anesthesia (other than burn)'},
+  {code:'17250',desc:'Chemical cauterization of granulation tissue'},
+  {code:'40806',desc:'Incision of labial frenum (frenotomy)'},
+  {code:'46600',desc:'Anoscopy, diagnostic'},
+  {code:'46900',desc:'Destruction of anal lesion(s), chemical'},
+  {code:'29200',desc:'Strapping of thorax'},
+  {code:'29280',desc:'Strapping of hand or finger'},
+  {code:'29550',desc:'Strapping of toes'},
+  {code:'97597',desc:'Wound debridement, selective, first 20 sq cm'},
+  {code:'97602',desc:'Wound care, non-selective debridement'},
+];
+
+// ═══════════════════════════════════════════
 // BILLING TAB (CMS-1500)
 // ═══════════════════════════════════════════
 async function renderBillingTab() {
@@ -3561,7 +4404,37 @@ async function renderBillingTab() {
     <button class="btn${_billingFormType==='ub04'?' primary':''} sm" onclick="switchBillingForm('ub04')">🏥 UB-04 — Institutional</button>
   </div>`;
 
-  el.innerHTML = `${claimsHistory}${formSel}
+  if (existingClaims.length && !_billingDx.length && !_billingProc.length) {
+    const latest = existingClaims[0];
+    _billingDx = (latest.icd10Codes||[]).slice();
+    _billingProc = (latest.cptCodes||[]).slice();
+  }
+
+  const codeLookup = `<div class="sc" style="margin-bottom:14px">
+    <div class="sc-head"><h3>🩺 Diagnosis &amp; Procedure Codes</h3></div>
+    <div class="sc-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex-wrap:wrap">
+        <div>
+          <div class="cms-cell-label" style="margin-bottom:4px">ICD-10 Diagnosis Codes <span style="color:#e74c3c">*</span> <span style="text-transform:none;font-weight:400">— search via NIH ClinicalTables</span></div>
+          <div style="position:relative">
+            <input type="text" class="cms-input" id="icd-search" placeholder="Search diagnosis (e.g. diabetes, asthma, J45.909)..." autocomplete="off" oninput="searchICD10(this.value)" onfocus="searchICD10(this.value)">
+            <div id="icd-results" class="code-dropdown hidden"></div>
+          </div>
+          <div id="icd-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        </div>
+        <div>
+          <div class="cms-cell-label" style="margin-bottom:4px">CPT Procedure Codes <span style="color:#e74c3c">*</span></div>
+          <div style="position:relative">
+            <input type="text" class="cms-input" id="cpt-search" placeholder="Search procedure (e.g. office visit, 99213)..." autocomplete="off" oninput="searchCPT(this.value)" onfocus="searchCPT(this.value)">
+            <div id="cpt-results" class="code-dropdown hidden"></div>
+          </div>
+          <div id="cpt-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  el.innerHTML = `${claimsHistory}${codeLookup}${formSel}
   <div id="wrap-ub04" style="display:${_billingFormType==='ub04'?'block':'none'}">${_billingFormType==='ub04'?buildUB04HTML(p,canSubmit):''}</div>
   <div id="wrap-cms1500" style="display:${_billingFormType==='cms1500'?'block':'none'}">
   <div class="sc cms-form" style="overflow:hidden">
@@ -3683,9 +4556,99 @@ async function renderBillingTab() {
     ${submitBtns}
   </div>
   </div>`;
+
+  renderCodeChips();
 }
 
 let _billingFormType = 'cms1500';
+let _billingDx = [];   // {code, desc} ICD-10 diagnosis codes
+let _billingProc = []; // {code, desc} CPT procedure codes
+
+// ─── ICD-10 lookup (NIH ClinicalTables) ───
+let _icdSearchTimer = null;
+function searchICD10(term) {
+  const box = document.getElementById('icd-results');
+  if (!box) return;
+  term = term.trim();
+  clearTimeout(_icdSearchTimer);
+  if (!term) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  _icdSearchTimer = setTimeout(async () => {
+    try {
+      const url = `https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code,name&terms=${encodeURIComponent(term)}&maxList=15`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const results = (data[3] || []).map((row,i) => ({ code: row[0], desc: row[1] }));
+      if (!results.length) {
+        box.innerHTML = '<div class="code-dropdown-empty">No matches found</div>';
+      } else {
+        box.innerHTML = results.map(r =>
+          `<div class="code-dropdown-item" onclick='addCode("dx", ${JSON.stringify(r.code)}, ${JSON.stringify(r.desc)})'><span class="cd-code">${r.code}</span>${r.desc}</div>`
+        ).join('');
+      }
+      box.classList.remove('hidden');
+    } catch(e) {
+      box.innerHTML = '<div class="code-dropdown-empty">Lookup failed — check connection</div>';
+      box.classList.remove('hidden');
+    }
+  }, 300);
+}
+
+// ─── CPT lookup (local array filter) ───
+function searchCPT(term) {
+  const box = document.getElementById('cpt-results');
+  if (!box) return;
+  term = term.trim().toLowerCase();
+  if (!term) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const results = CPT_CODES.filter(c => c.code.toLowerCase().includes(term) || c.desc.toLowerCase().includes(term)).slice(0,15);
+  if (!results.length) {
+    box.innerHTML = '<div class="code-dropdown-empty">No matches found</div>';
+  } else {
+    box.innerHTML = results.map(r =>
+      `<div class="code-dropdown-item" onclick='addCode("proc", ${JSON.stringify(r.code)}, ${JSON.stringify(r.desc)})'><span class="cd-code">${r.code}</span>${r.desc}</div>`
+    ).join('');
+  }
+  box.classList.remove('hidden');
+}
+
+function addCode(kind, code, desc) {
+  const list = kind === 'dx' ? _billingDx : _billingProc;
+  if (!list.some(c => c.code === code)) list.push({ code, desc });
+  const searchId = kind === 'dx' ? 'icd-search' : 'cpt-search';
+  const resultsId = kind === 'dx' ? 'icd-results' : 'cpt-results';
+  document.getElementById(searchId).value = '';
+  document.getElementById(resultsId).classList.add('hidden');
+  document.getElementById(resultsId).innerHTML = '';
+  renderCodeChips();
+}
+
+function removeCode(kind, code) {
+  if (kind === 'dx') _billingDx = _billingDx.filter(c => c.code !== code);
+  else _billingProc = _billingProc.filter(c => c.code !== code);
+  renderCodeChips();
+}
+
+function renderCodeChips() {
+  const dxEl = document.getElementById('icd-chips');
+  const procEl = document.getElementById('cpt-chips');
+  if (dxEl) dxEl.innerHTML = _billingDx.map(c =>
+    `<span class="code-chip"><span class="cc-code">${c.code}</span> ${c.desc} <span class="cc-x" onclick='removeCode("dx", ${JSON.stringify(c.code)})'>✕</span></span>`
+  ).join('') || '<span style="font-size:11px;color:var(--text3)">No diagnosis codes selected yet</span>';
+  if (procEl) procEl.innerHTML = _billingProc.map(c =>
+    `<span class="code-chip"><span class="cc-code">${c.code}</span> ${c.desc} <span class="cc-x" onclick='removeCode("proc", ${JSON.stringify(c.code)})'>✕</span></span>`
+  ).join('') || '<span style="font-size:11px;color:var(--text3)">No procedure codes selected yet</span>';
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#icd-search') && !e.target.closest('#icd-results')) {
+    const box = document.getElementById('icd-results');
+    if (box) box.classList.add('hidden');
+  }
+  if (!e.target.closest('#cpt-search') && !e.target.closest('#cpt-results')) {
+    const box = document.getElementById('cpt-results');
+    if (box) box.classList.add('hidden');
+  }
+});
 
 function switchBillingForm(type) {
   if (_billingFormType === type) return;
@@ -3953,6 +4916,10 @@ function getClaimFormData() {
 }
 
 async function saveClaim(status) {
+  if (status === 'submitted') {
+    if (!_billingDx.length) { toast('Select at least one ICD-10 diagnosis code before submitting', 'error'); return; }
+    if (!_billingProc.length) { toast('Select at least one CPT procedure code before submitting', 'error'); return; }
+  }
   const p = currentPatient;
   const data = _billingFormType === 'ub04' ? getUB04FormData() : getClaimFormData();
   const totalCharge = _billingFormType === 'ub04'
@@ -3967,12 +4934,14 @@ async function saveClaim(status) {
       patientName: `${p.last}, ${p.first}`, mrn: p.mrn,
       formType: _billingFormType,
       ...data,
+      icd10Codes: _billingDx, cptCodes: _billingProc,
       totalCharge,
       claimStatus: status,
       submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
       gradedByUid: null, gradeNote: null
     });
     toast(status === 'submitted' ? 'Claim submitted for review' : 'Draft saved');
+    _billingDx = []; _billingProc = [];
     renderBillingTab();
   } catch(e) { toast('Error saving claim: ' + e.message, 'error'); }
 }
@@ -4354,9 +5323,16 @@ async function loadCalendarPage() {
 }
 
 async function refreshCalMonth() {
+  if (!currentUserProfile?.campusId) {
+    toast('Your account is missing a campus assignment — contact your instructor to fix your profile', 'error');
+    _calMonthAppts = []; renderCalMonth(); return;
+  }
   try {
-    const snap = await db.collection('appointments')
-      .where('campusId','==', currentUserProfile.campusId).get();
+    const isAdmin = currentUserProfile.role === 'admin';
+    const q = isAdmin
+      ? db.collection('appointments')
+      : db.collection('appointments').where('campusId','==', currentUserProfile.campusId);
+    const snap = await q.get();
     const prefix = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}`;
     _calMonthAppts = snap.docs.map(d=>({id:d.id,...d.data()}))
       .filter(a => (a.date||'').startsWith(prefix));
@@ -4404,9 +5380,11 @@ async function calSelectDay(dateStr) {
   const el = document.getElementById('cal-day-view');
   if (el) el.innerHTML = '<div class="day-view-card"><div class="day-view-head"><div class="day-view-title">Loading...</div></div></div>';
   try {
-    const snap = await db.collection('appointments')
-      .where('campusId','==',currentUserProfile.campusId)
-      .where('date','==',dateStr).get();
+    const isAdmin = currentUserProfile.role === 'admin';
+    const q = isAdmin
+      ? db.collection('appointments').where('date','==',dateStr)
+      : db.collection('appointments').where('campusId','==',currentUserProfile.campusId).where('date','==',dateStr);
+    const snap = await q.get();
     _calDayAppts = snap.docs.map(d=>({id:d.id,...d.data()}))
       .sort((a,b)=>a.time.localeCompare(b.time));
   } catch(e) { _calDayAppts = []; }
@@ -4473,6 +5451,18 @@ function openBookingModal(dateStr, time) {
   document.getElementById('appt-selected-pt').style.display='none';
   document.getElementById('appt-new-pt-wrap').style.display='none';
   document.getElementById('appt-type').value='Follow-up Visit';
+
+  // Show campus picker for admin
+  const campusWrap = document.getElementById('appt-campus-wrap');
+  const campusSel = document.getElementById('appt-campus-id');
+  if (currentUserProfile.role === 'admin') {
+    campusWrap.style.display = '';
+    campusSel.innerHTML = '<option value="">— Select campus —</option>' +
+      allCampuses.map(c => `<option value="${c.id}" data-name="${c.name}">${c.name}</option>`).join('');
+  } else {
+    campusWrap.style.display = 'none';
+  }
+
   openM('modal-book-appt');
 }
 
@@ -4545,8 +5535,17 @@ async function saveAppointment() {
     patientName = document.getElementById('appt-pt-search').value.trim()||'Walk-in / Caller';
   }
   try {
+    const isAdmin = currentUserProfile.role === 'admin';
+    let apptCampusId = currentUserProfile.campusId;
+    let apptCampusName = currentUserProfile.campusName || '';
+    if (isAdmin) {
+      const sel = document.getElementById('appt-campus-id');
+      apptCampusId = sel.value;
+      apptCampusName = sel.options[sel.selectedIndex]?.dataset.name || '';
+      if (!apptCampusId) { toast('Please select a campus for this appointment', 'error'); return; }
+    }
     await db.collection('appointments').add({
-      campusId:currentUserProfile.campusId, date:_apptBookingDate, time, duration:30,
+      campusId:apptCampusId, campusName:apptCampusName, date:_apptBookingDate, time, duration:30,
       patientId, patientName, patientPhone, patientDob, patientMrn,
       chiefComplaint:cc, appointmentType:type, notes, status:'scheduled',
       scheduledByUid:currentUser.uid,
