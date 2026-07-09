@@ -664,6 +664,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="c-tab" id="tab-btn-rx" data-tab="rx" style="display:none">📋 Rx Orders <span class="tc" id="tc-rx">0</span></div>
           <div class="c-tab" id="tab-btn-billing" data-tab="billing" style="display:none">🏥 Billing</div>
           <div class="c-tab" id="tab-btn-labels" data-tab="labels" style="display:none">🏷 Labels</div>
+          <div class="c-tab" id="tab-btn-prevvisits" data-tab="prevvisits" style="display:none">📂 Previous Visits</div>
         </div>
         <div class="chart-body" id="chart-body">
           <div class="tab-content active" id="tab-overview"></div>
@@ -680,6 +681,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="tab-content" id="tab-rx"></div>
           <div class="tab-content" id="tab-billing"></div>
           <div class="tab-content" id="tab-labels"></div>
+          <div class="tab-content" id="tab-prevvisits"></div>
         </div>
       </div>
     </div>
@@ -1692,6 +1694,7 @@ document.querySelectorAll('.c-tab').forEach(t => t.addEventListener('click', () 
   if (t.dataset.tab === 'rx') renderRxTab();
   if (t.dataset.tab === 'billing') renderBillingTab();
   if (t.dataset.tab === 'labels') renderLabelsTab();
+  if (t.dataset.tab === 'prevvisits') renderPrevVisits();
   if (t.dataset.tab === 'vitals') requestAnimationFrame(()=>{ drawVitalsChart(); updateVitalChipStyles(); });
 }));
 function setTab(name) {
@@ -3810,6 +3813,9 @@ function applyProgramVisibility() {
   const visitComplete = !currentPatient.visitStatus || currentPatient.visitStatus === 'complete';
   const finalizeBtn = document.getElementById('btn-finalize-visit');
 
+  const hasPrevVisits = (currentPatient.visitLog || []).length > 0;
+  showTab('prevvisits', hasPrevVisits);
+
   if (isInstructor()) {
     showTab('rx', true);
     showTab('billing', visitComplete);
@@ -3883,11 +3889,22 @@ async function startNewVisit() {
   if (!confirm(`Start Visit #${visitNum + 1} for ${currentPatient.first} ${currentPatient.last}?\n\nThe current finalized visit will be archived. Rx Orders and Billing will reset for the new visit.`)) return;
   const newVisitId = 'visit-' + Date.now();
   const newVisitNumber = visitNum + 1;
+  // Build a summary snapshot of the visit being archived
+  const visitStarted = currentPatient.visitStartedAt ? new Date(currentPatient.visitStartedAt.toDate ? currentPatient.visitStartedAt.toDate() : currentPatient.visitStartedAt) : null;
+  const visitNotes = (currentPatient.notes || []).filter(n => !visitStarted || !n.time || new Date(n.time) >= visitStarted);
+  const ccNote = visitNotes.find(n => n.content && n.content.startsWith('CHIEF COMPLAINT:'));
+  const chiefComplaint = ccNote ? ccNote.content.replace('CHIEF COMPLAINT:\n','').split('\n')[0].trim() : '';
+  const visitVitals = (currentPatient.vitals || []).filter(v => v.time && visitStarted ? new Date(v.time) >= visitStarted : true);
+  const lastVitals = visitVitals.length ? visitVitals[visitVitals.length - 1] : ((currentPatient.vitals||[]).slice(-1)[0] || null);
   const logEntry = {
     visitId: currentPatient.visitId || ('visit-legacy-' + visitNum),
     visitNumber: visitNum,
     finalizedAt: currentPatient.finalizedAt || null,
-    finalizedBy: currentPatient.finalizedBy || null
+    finalizedBy: currentPatient.finalizedBy || null,
+    visitStartedAt: currentPatient.visitStartedAt || null,
+    chiefComplaint,
+    vitalsSnapshot: lastVitals ? { sbp: lastVitals.sbp, dbp: lastVitals.dbp, hr: lastVitals.hr, temp: lastVitals.temp, spo2: lastVitals.spo2, rr: lastVitals.rr, wt: lastVitals.wt, pain: lastVitals.pain } : null,
+    noteCount: visitNotes.length
   };
   try {
     await db.collection('patients').doc(currentPatient.id).update({
@@ -5233,6 +5250,77 @@ async function submitGrade(collection, docId, inputId) {
 // ═══════════════════════════════════════════
 // PATIENT LABELS
 // ═══════════════════════════════════════════
+async function renderPrevVisits() {
+  const el = document.getElementById('tab-prevvisits');
+  const p = currentPatient;
+  if (!el || !p) return;
+  const log = (p.visitLog || []).slice().sort((a,b) => (a.visitNumber||0) - (b.visitNumber||0));
+  if (!log.length) {
+    el.innerHTML = '<div class="sc"><div class="sc-body"><div class="empty-state"><div class="empty-icon">📂</div>No previous visits on record</div></div></div>';
+    return;
+  }
+  el.innerHTML = '<div class="sc"><div class="sc-head"><h3>📂 Previous Visit Summaries</h3></div><div class="sc-body" id="prev-visits-body"><div style="color:var(--text3);font-size:13px;padding:8px">Loading...</div></div></div>';
+
+  // Fetch Rx and claims for all past visitIds in one pass
+  const pastVisitIds = log.map(e => e.visitId).filter(Boolean);
+  let rxMap = {}, claimsMap = {};
+  try {
+    if (pastVisitIds.length) {
+      const rxSnap = await db.collection('prescriptions').where('patientId','==',p.id).get();
+      rxSnap.docs.forEach(d => { const v=d.data().visitId; if(v){ rxMap[v]=rxMap[v]||[]; rxMap[v].push(d.data()); } });
+      const clSnap = await db.collection('claims').where('patientId','==',p.id).get();
+      clSnap.docs.forEach(d => { const v=d.data().visitId; if(v){ claimsMap[v]=claimsMap[v]||[]; claimsMap[v].push(d.data()); } });
+    }
+  } catch(e) {}
+
+  const fmtV = v => v||'—';
+  const fmtDt = iso => { if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
+  const fmtTs = ts => { if(!ts) return '—'; const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
+
+  const cards = log.map(e => {
+    const vs = e.vitalsSnapshot || {};
+    const rxList = rxMap[e.visitId] || [];
+    const clList = claimsMap[e.visitId] || [];
+    const hasVitals = vs.sbp || vs.hr || vs.temp || vs.spo2;
+    return `
+    <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden">
+      <div style="background:var(--surface2);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+        <span style="font-weight:700;font-size:14px">Visit #${e.visitNumber||'?'}</span>
+        <span style="font-size:11px;color:var(--text3)">Finalized ${fmtTs(e.finalizedAt)} ${e.finalizedBy?'by '+e.finalizedBy:''}</span>
+      </div>
+      <div style="padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Chief Complaint</div>
+          <div style="font-size:13px">${e.chiefComplaint || '<span style="color:var(--text3)">Not recorded</span>'}</div>
+          ${e.visitStartedAt ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">Started: ${fmtTs(e.visitStartedAt)}</div>` : ''}
+          <div style="margin-top:10px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Clinical Notes</div>
+          <div style="font-size:13px">${e.noteCount ? e.noteCount + ' note' + (e.noteCount>1?'s':'') + ' recorded' : '<span style="color:var(--text3)">None</span>'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Vitals at Finalization</div>
+          ${hasVitals ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px">
+            ${vs.sbp||vs.dbp?`<div><span style="color:var(--text3)">BP:</span> ${fmtV(vs.sbp)}/${fmtV(vs.dbp)} mmHg</div>`:''}
+            ${vs.hr?`<div><span style="color:var(--text3)">HR:</span> ${fmtV(vs.hr)} bpm</div>`:''}
+            ${vs.temp?`<div><span style="color:var(--text3)">Temp:</span> ${fmtV(vs.temp)}°F</div>`:''}
+            ${vs.spo2?`<div><span style="color:var(--text3)">SpO2:</span> ${fmtV(vs.spo2)}%</div>`:''}
+            ${vs.rr?`<div><span style="color:var(--text3)">RR:</span> ${fmtV(vs.rr)}/min</div>`:''}
+            ${vs.wt?`<div><span style="color:var(--text3)">Wt:</span> ${fmtV(vs.wt)} lbs</div>`:''}
+            ${vs.pain!=null&&vs.pain!==''?`<div><span style="color:var(--text3)">Pain:</span> ${vs.pain}/10</div>`:''}
+          </div>` : '<div style="font-size:12px;color:var(--text3)">No vitals snapshot</div>'}
+        </div>
+      </div>
+      ${rxList.length || clList.length ? `
+      <div style="border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:20px;font-size:12px;background:var(--surface)">
+        ${rxList.length ? `<div>💊 <strong>${rxList.length}</strong> Rx order${rxList.length>1?'s':''}: ${rxList.map(r=>r.drugName||r.drug||'Rx').join(', ')}</div>` : ''}
+        ${clList.length ? `<div>🏥 <strong>${clList.length}</strong> claim${clList.length>1?'s':''} submitted (${clList.map(r=>(r.formType==='ub04'?'UB-04':'CMS-1500')).join(', ')})</div>` : ''}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('prev-visits-body').innerHTML = cards;
+}
+
 function renderLabelsTab() {
   const el = document.getElementById('tab-labels');
   const p = currentPatient;
