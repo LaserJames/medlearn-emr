@@ -3801,7 +3801,7 @@ function applyProgramVisibility() {
     if (!['rx','billing'].includes(tab)) t.style.display = '';
   });
 
-  const visitComplete = currentPatient.visitStatus === 'complete';
+  const visitComplete = !currentPatient.visitStatus || currentPatient.visitStatus === 'complete';
   const finalizeBtn = document.getElementById('btn-finalize-visit');
 
   if (isInstructor()) {
