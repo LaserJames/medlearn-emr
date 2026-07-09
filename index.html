@@ -1869,13 +1869,16 @@ function drawVitalsChart() {
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
 
-  const vitals = (currentPatient.vitals||[]).filter(v=>v.time).slice().sort((a,b)=>new Date(a.time)-new Date(b.time));
+  // Use all vitals; for legacy entries missing time, assign synthetic index-based x positions
+  const allVitals = (currentPatient.vitals||[]).slice();
+  const vitals = allVitals.map((v,i) => v.time ? v : {...v, time: null, _idx: i});
   vitalsChartData = vitals;
   if (vitals.length < 2) return;
 
   const padL=50, padR=20, padT=24, padB=36;
   const plotW = W-padL-padR, plotH = H-padT-padB;
-  const times = vitals.map(v=>new Date(v.time).getTime());
+  const hasRealTimes = vitals.some(v=>v.time);
+  const times = vitals.map((v,i) => v.time ? new Date(v.time).getTime() : i * 86400000);
   const tMin = times[0], tRange = (times[times.length-1]-tMin) || 1;
   const xFor = i => padL + (times[i]-tMin)/tRange*plotW;
 
@@ -1892,8 +1895,11 @@ function drawVitalsChart() {
     const idx = Math.round(k*(vitals.length-1)/(labelCount-1||1));
     const x = xFor(idx);
     ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+plotH); ctx.stroke();
-    const d = new Date(times[idx]);
-    ctx.fillText(`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`, x, H-padB+15);
+    const v = vitals[idx];
+    const label = v.time
+      ? (() => { const d=new Date(v.time); return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; })()
+      : `Entry ${idx+1}`;
+    ctx.fillText(label, x, H-padB+15);
   }
 
   Object.keys(vitalsChartActive).forEach(m=>{
