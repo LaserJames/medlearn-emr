@@ -369,8 +369,11 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .program-badge.pt { background: rgba(47,158,68,0.12); color: var(--green); }
 
 /* ── Read-only chart mode ── */
-.chart-readonly .btn.primary, .chart-readonly .btn.warning, .chart-readonly .btn.danger,
-.chart-readonly .pt-header-actions .btn { display: none !important; }
+/* #tab-billing and #tab-rx are excluded: those tabs manage their own button visibility (e.g. Submit Claim, Write Rx) independent of chart lock state */
+.chart-readonly .tab-content:not(#tab-billing):not(#tab-rx) .btn.primary,
+.chart-readonly .tab-content:not(#tab-billing):not(#tab-rx) .btn.warning,
+.chart-readonly .tab-content:not(#tab-billing):not(#tab-rx) .btn.danger,
+.pt-header-actions.chart-readonly .btn { display: none !important; }
 
 /* ── Finalize Visit button ── */
 .btn.finalize { color: var(--green); border-color: rgba(47,158,68,0.3); background: var(--green-soft); }
@@ -643,11 +646,11 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
             </div>
           </div>
           <div class="pt-header-actions">
-            <button class="btn sm" onclick="openM('modal-vitals')">+ Vitals</button>
-            <button class="btn sm" onclick="openM('modal-note')">+ Note</button>
-            <button class="btn primary sm" onclick="openM('modal-intake')">Full Intake</button>
+            <button class="btn sm" id="hdr-btn-vitals" onclick="openM('modal-vitals')">+ Vitals</button>
+            <button class="btn sm" id="hdr-btn-note" onclick="openM('modal-note')">+ Note</button>
+            <button class="btn primary sm" id="hdr-btn-intake" onclick="openM('modal-intake')">Full Intake</button>
             <button class="btn finalize sm" id="btn-finalize-visit" onclick="finalizeVisit()" style="display:none">✓ Finalize Visit</button>
-            <button class="btn danger sm" onclick="deletePatient()" style="border:1px solid rgba(248,81,73,0.3)">🗑 Delete Patient</button>
+            <button class="btn danger sm" id="hdr-btn-delete" onclick="deletePatient()" style="border:1px solid rgba(248,81,73,0.3)">🗑 Delete Patient</button>
           </div>
         </div>
         <div class="allergy-bar" id="allergy-bar">⚠️ <span id="allergy-bar-text"></span></div>
@@ -4071,6 +4074,10 @@ function applyProgramVisibility() {
   // Reset
   chartBody.classList.remove('chart-readonly');
   if (ptHeaderActions) ptHeaderActions.classList.remove('chart-readonly');
+  ['hdr-btn-vitals','hdr-btn-note','hdr-btn-intake','hdr-btn-delete'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.style.display = '';
+  });
 
   // Tab visibility
   const showTab = (id, show) => {
@@ -4100,6 +4107,15 @@ function applyProgramVisibility() {
     showTab('rx', true);
     showTab('billing', visitComplete);
     showTab('labels', true);
+    if (visitComplete) {
+      // Visit is finalized — lock the clinical chart while billing is in progress.
+      // Rx and Billing tabs manage their own controls and stay interactive.
+      chartBody.classList.add('chart-readonly');
+      ['hdr-btn-vitals','hdr-btn-note','hdr-btn-intake','hdr-btn-delete'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.style.display = 'none';
+      });
+    }
     if (finalizeBtn) setFinalizeBtnState(finalizeBtn, visitComplete);
   } else if (program === 'billing_coding') {
     // Read-only full chart + billing tab when visit complete
