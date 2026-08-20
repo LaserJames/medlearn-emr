@@ -591,6 +591,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <div class="nav-item" onclick="requirePatient('modal-med')"><span class="nav-icon">💊</span>Add Medication</div>
         <div class="nav-item" onclick="requirePatient('modal-note')"><span class="nav-icon">📝</span>Write Note</div>
         <div class="nav-item" onclick="requirePatient('modal-ekg')"><span class="nav-icon">📈</span>Record EKG</div>
+        <div class="nav-item" onclick="requirePatient('modal-urinalysis')"><span class="nav-icon">🧪</span>Record Urinalysis</div>
         <div class="nav-item" onclick="requirePatient('modal-allergy')"><span class="nav-icon">⚠️</span>Add Allergy</div>
       </div>
       <div class="sidebar-divider"></div>
@@ -660,6 +661,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="c-tab" data-tab="procedures">Procedures <span class="tc" id="tc-p">0</span></div>
           <div class="c-tab" data-tab="vaccines">Vaccines / Injections <span class="tc" id="tc-va">0</span></div>
           <div class="c-tab" data-tab="ekg">EKG <span class="tc" id="tc-e">0</span></div>
+          <div class="c-tab" data-tab="urinalysis">🧪 Urinalysis <span class="tc" id="tc-ua">0</span></div>
           <div class="c-tab" data-tab="notes">Notes <span class="tc" id="tc-n">0</span></div>
           <div class="c-tab" data-tab="vision">👁 Vision</div>
           <div class="c-tab" id="tab-btn-rx" data-tab="rx" style="display:none">📋 Rx Orders <span class="tc" id="tc-rx">0</span></div>
@@ -677,6 +679,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
           <div class="tab-content" id="tab-procedures"></div>
           <div class="tab-content" id="tab-vaccines"></div>
           <div class="tab-content" id="tab-ekg"></div>
+          <div class="tab-content" id="tab-urinalysis"></div>
           <div class="tab-content" id="tab-notes"></div>
           <div class="tab-content" id="tab-vision"></div>
           <div class="tab-content" id="tab-rx"></div>
@@ -812,8 +815,10 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
         <button class="btn primary" onclick="openAddCampus()">+ Add New Campus</button>
         <button class="btn sm" onclick="openAddGroup()">📁 New School Group</button>
         <button class="btn warning" onclick="runCampusFix()">🔧 Fix Missing Campus Assignments</button>
+        <button class="btn warning" onclick="runProgramFix()">🎓 Fix Missing Program Assignments</button>
       </div>
       <div id="campus-fix-panel" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:18px"></div>
+      <div id="program-fix-panel" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:18px"></div>
       <div class="campus-grid" id="campus-grid">
         <div style="color:var(--text3);font-size:13px;margin-top:8px">Loading campuses...</div>
       </div>
@@ -1048,6 +1053,72 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
       <div class="fr c2"><div class="mf"><label>Ordered / Interpreted By (Doctor)</label><input type="text" id="ek-prov" placeholder="Dr. Smith" /></div><div class="mf"><label>Performed By</label><input type="text" id="ek-performed-by" placeholder="Student name" /></div></div>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeM('modal-ekg')">Cancel</button><button class="btn primary" onclick="saveEKG()">Save EKG</button></div>
+  </div>
+</div>
+
+<!-- URINALYSIS -->
+<div class="overlay hidden" id="modal-urinalysis">
+  <div class="modal wide">
+    <div class="modal-head"><h2>🧪 Urinalysis</h2><button class="modal-x" onclick="closeM('modal-urinalysis')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="ua-edit-index" value="-1" />
+      <div class="fr c3">
+        <div class="mf"><label>Date *</label><input type="date" id="ua-date" /></div>
+        <div class="mf"><label>Collection Method</label><select id="ua-method"><option>Clean Catch</option><option>Midstream</option><option>Catheterized</option><option>Random</option><option>First Morning</option><option>Other</option></select></div>
+        <div class="mf"><label>Performed By</label><input type="text" id="ua-performed-by" placeholder="Student name" /></div>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px">
+        <div style="background:var(--accent-soft);padding:8px 14px;font-size:11px;font-weight:600;color:var(--accent-hover);text-transform:uppercase;letter-spacing:0.06em">🔍 Physical Examination</div>
+        <div style="padding:12px 14px">
+          <div class="fr c3">
+            <div class="mf"><label>Color</label><select id="ua-color"><option>Pale Yellow</option><option>Yellow</option><option>Dark Yellow</option><option>Amber</option><option>Straw</option><option>Colorless</option><option>Pink/Red</option><option>Brown</option><option>Orange</option><option>Other</option></select></div>
+            <div class="mf"><label>Clarity / Appearance</label><select id="ua-clarity"><option>Clear</option><option>Slightly Cloudy</option><option>Cloudy</option><option>Turbid</option></select></div>
+            <div class="mf"><label>Specific Gravity</label><input type="text" id="ua-sg" placeholder="e.g. 1.020" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px">
+        <div style="background:var(--green-soft);padding:8px 14px;font-size:11px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:0.06em">🧪 Chemical (Dipstick)</div>
+        <div style="padding:12px 14px">
+          <div class="fr c3">
+            <div class="mf"><label>pH</label><input type="text" id="ua-ph" placeholder="e.g. 6.0" /></div>
+            <div class="mf"><label>Glucose</label><select id="ua-glucose"><option>Negative</option><option>Trace</option><option>+1</option><option>+2</option><option>+3</option><option>+4</option></select></div>
+            <div class="mf"><label>Protein</label><select id="ua-protein"><option>Negative</option><option>Trace</option><option>+1</option><option>+2</option><option>+3</option><option>+4</option></select></div>
+          </div>
+          <div class="fr c3">
+            <div class="mf"><label>Ketones</label><select id="ua-ketones"><option>Negative</option><option>Trace</option><option>+1</option><option>+2</option><option>+3</option><option>+4</option></select></div>
+            <div class="mf"><label>Blood</label><select id="ua-blood"><option>Negative</option><option>Trace</option><option>+1</option><option>+2</option><option>+3</option></select></div>
+            <div class="mf"><label>Bilirubin</label><select id="ua-bilirubin"><option>Negative</option><option>+1</option><option>+2</option><option>+3</option></select></div>
+          </div>
+          <div class="fr c3">
+            <div class="mf"><label>Urobilinogen</label><input type="text" id="ua-urobilinogen" placeholder="e.g. 0.2 EU/dL" /></div>
+            <div class="mf"><label>Nitrites</label><select id="ua-nitrites"><option>Negative</option><option>Positive</option></select></div>
+            <div class="mf"><label>Leukocyte Esterase</label><select id="ua-leukesterase"><option>Negative</option><option>Trace</option><option>+1</option><option>+2</option><option>+3</option></select></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px">
+        <div style="background:var(--surface3);padding:8px 14px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em">🔬 Microscopic Exam (optional)</div>
+        <div style="padding:12px 14px">
+          <div class="fr c3">
+            <div class="mf"><label>WBC /hpf</label><input type="text" id="ua-wbc" placeholder="e.g. 0-2" /></div>
+            <div class="mf"><label>RBC /hpf</label><input type="text" id="ua-rbc" placeholder="e.g. 0-2" /></div>
+            <div class="mf"><label>Bacteria</label><select id="ua-bacteria"><option>None</option><option>Rare</option><option>Few</option><option>Moderate</option><option>Many</option></select></div>
+          </div>
+          <div class="fr c3">
+            <div class="mf"><label>Epithelial Cells</label><select id="ua-epithelial"><option>None</option><option>Rare</option><option>Few</option><option>Moderate</option><option>Many</option></select></div>
+            <div class="mf"><label>Casts</label><input type="text" id="ua-casts" placeholder="e.g. None, Hyaline 1-2/lpf" /></div>
+            <div class="mf"><label>Crystals</label><input type="text" id="ua-crystals" placeholder="e.g. None, Calcium Oxalate" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mf"><label>Interpretation / Notes</label><textarea id="ua-notes" placeholder="Clinical correlation, follow-up recommendations..."></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeM('modal-urinalysis')">Cancel</button><button class="btn primary" onclick="saveUrinalysis()">Save Urinalysis</button></div>
   </div>
 </div>
 
@@ -1718,6 +1789,7 @@ function updateTabCounts() {
   document.getElementById('tc-p').textContent = (p.procedures||[]).length;
   document.getElementById('tc-va').textContent = (p.vaccines||[]).length;
   document.getElementById('tc-e').textContent = (p.ekgs||[]).length;
+  document.getElementById('tc-ua').textContent = (p.urinalysis||[]).length;
   document.getElementById('tc-n').textContent = (p.notes||[]).length;
 }
 
@@ -1740,7 +1812,7 @@ function setTab(name) {
 
 function renderAllTabs() {
   renderOverview(); renderVitals(); renderMeds(); renderAllergies();
-  renderPMH(); renderROS(); renderProcedures(); renderVaccines(); renderEKGs(); renderNotes(); renderVision();
+  renderPMH(); renderROS(); renderProcedures(); renderVaccines(); renderEKGs(); renderUrinalysis(); renderNotes(); renderVision();
   // Async tabs — only render if visible
   const rxBtn = document.getElementById('tab-btn-rx');
   if (rxBtn && rxBtn.style.display !== 'none') renderRxTab();
@@ -3137,6 +3209,120 @@ async function saveEKG() {
   document.getElementById('ek-edit-index').value = '-1';
 }
 
+// ═══════════════════════════════════════════
+// URINALYSIS
+// ═══════════════════════════════════════════
+function renderUrinalysis() {
+  const results = currentPatient.urinalysis || [];
+  document.getElementById('tab-urinalysis').innerHTML = `<div class="sc"><div class="sc-head"><h3>🧪 Urinalysis</h3><button class="btn primary sm" onclick="openM('modal-urinalysis')">+ Add Urinalysis</button></div><div class="sc-body">${
+    !results.length ? '<div class="empty-state"><div class="empty-icon">🧪</div>No urinalysis results documented</div>' :
+    results.slice().reverse().map((u,ri) => {
+      const i = results.length-1-ri;
+      const chip = (label, val) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center">
+        <div style="font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">${label}</div>
+        <div style="font-size:13px;font-weight:700;font-family:var(--mono);color:var(--text)">${val || '—'}</div>
+      </div>`;
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div>
+            <div style="font-weight:600;font-size:14px">Urinalysis — ${u.date||'No date'} ${u.method?`<span style="font-weight:400;color:var(--text3);font-size:11px">· ${u.method}</span>`:''}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">👤 ${u.performedBy||u.by||'—'}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn warning sm" onclick="editUrinalysis(${i})">✏ Edit</button>
+            <button class="btn danger sm" onclick="deleteSubItem('urinalysis',${i})">× Remove</button>
+          </div>
+        </div>
+        <div style="font-size:10px;font-weight:600;color:var(--accent-hover);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">🔍 Physical</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+          ${chip('Color', u.color)}
+          ${chip('Clarity', u.clarity)}
+          ${chip('Sp. Gravity', u.sg)}
+        </div>
+        <div style="font-size:10px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">🧪 Chemical (Dipstick)</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:${(u.wbc||u.rbc||u.bacteria||u.epithelial||u.casts||u.crystals)?'14px':'0'}">
+          ${chip('pH', u.ph)}
+          ${chip('Glucose', u.glucose)}
+          ${chip('Protein', u.protein)}
+          ${chip('Ketones', u.ketones)}
+          ${chip('Blood', u.blood)}
+          ${chip('Bilirubin', u.bilirubin)}
+          ${chip('Urobilinogen', u.urobilinogen)}
+          ${chip('Nitrites', u.nitrites)}
+          ${chip('Leuk. Esterase', u.leukesterase)}
+        </div>
+        ${(u.wbc||u.rbc||u.bacteria||u.epithelial||u.casts||u.crystals) ? `
+        <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">🔬 Microscopic</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          ${chip('WBC /hpf', u.wbc)}
+          ${chip('RBC /hpf', u.rbc)}
+          ${chip('Bacteria', u.bacteria)}
+          ${chip('Epithelial Cells', u.epithelial)}
+          ${chip('Casts', u.casts)}
+          ${chip('Crystals', u.crystals)}
+        </div>` : ''}
+        ${u.notes ? `<div style="margin-top:10px;font-size:12px;color:var(--text2);padding:8px 10px;background:var(--surface3);border-radius:var(--radius)">📝 ${u.notes}</div>` : ''}
+      </div>`;
+    }).join('')
+  }</div></div>`;
+}
+
+function editUrinalysis(i) {
+  const u = currentPatient.urinalysis[i];
+  document.getElementById('ua-edit-index').value = i;
+  document.getElementById('ua-date').value = u.date||'';
+  setSelectVal('ua-method', u.method);
+  document.getElementById('ua-performed-by').value = u.performedBy||u.by||'';
+  setSelectVal('ua-color', u.color);
+  setSelectVal('ua-clarity', u.clarity);
+  document.getElementById('ua-sg').value = u.sg||'';
+  document.getElementById('ua-ph').value = u.ph||'';
+  setSelectVal('ua-glucose', u.glucose);
+  setSelectVal('ua-protein', u.protein);
+  setSelectVal('ua-ketones', u.ketones);
+  setSelectVal('ua-blood', u.blood);
+  setSelectVal('ua-bilirubin', u.bilirubin);
+  document.getElementById('ua-urobilinogen').value = u.urobilinogen||'';
+  setSelectVal('ua-nitrites', u.nitrites);
+  setSelectVal('ua-leukesterase', u.leukesterase);
+  document.getElementById('ua-wbc').value = u.wbc||'';
+  document.getElementById('ua-rbc').value = u.rbc||'';
+  setSelectVal('ua-bacteria', u.bacteria);
+  setSelectVal('ua-epithelial', u.epithelial);
+  document.getElementById('ua-casts').value = u.casts||'';
+  document.getElementById('ua-crystals').value = u.crystals||'';
+  document.getElementById('ua-notes').value = u.notes||'';
+  document.getElementById('modal-urinalysis').classList.remove('hidden');
+}
+
+async function saveUrinalysis() {
+  const date = document.getElementById('ua-date').value;
+  if (!date) { toast('Date required','error'); return; }
+  const idx = parseInt(document.getElementById('ua-edit-index').value);
+  const item = {
+    date, method: document.getElementById('ua-method').value,
+    performedBy: document.getElementById('ua-performed-by').value || currentUserProfile?.displayName || currentUser.email,
+    by: currentUserProfile?.displayName || currentUser.email,
+    color: document.getElementById('ua-color').value, clarity: document.getElementById('ua-clarity').value, sg: document.getElementById('ua-sg').value.trim(),
+    ph: document.getElementById('ua-ph').value.trim(), glucose: document.getElementById('ua-glucose').value, protein: document.getElementById('ua-protein').value,
+    ketones: document.getElementById('ua-ketones').value, blood: document.getElementById('ua-blood').value, bilirubin: document.getElementById('ua-bilirubin').value,
+    urobilinogen: document.getElementById('ua-urobilinogen').value.trim(), nitrites: document.getElementById('ua-nitrites').value, leukesterase: document.getElementById('ua-leukesterase').value,
+    wbc: document.getElementById('ua-wbc').value.trim(), rbc: document.getElementById('ua-rbc').value.trim(), bacteria: document.getElementById('ua-bacteria').value,
+    epithelial: document.getElementById('ua-epithelial').value, casts: document.getElementById('ua-casts').value.trim(), crystals: document.getElementById('ua-crystals').value.trim(),
+    notes: document.getElementById('ua-notes').value.trim()
+  };
+  if (idx >= 0) {
+    item.recordedAt = (currentPatient.urinalysis[idx]||{}).recordedAt || new Date().toISOString();
+    await replaceArrayItem('urinalysis', idx, item); toast('Urinalysis updated');
+  } else {
+    item.recordedAt = new Date().toISOString();
+    await pushToArray('urinalysis', item); toast('Urinalysis recorded');
+  }
+  closeM('modal-urinalysis');
+  ['ua-sg','ua-ph','ua-urobilinogen','ua-wbc','ua-rbc','ua-casts','ua-crystals','ua-notes','ua-performed-by'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ua-edit-index').value = '-1';
+}
+
 async function saveNote() {
   const content = document.getElementById('nt-content').value.trim();
   if (!content) { toast('Note content required','error'); return; }
@@ -3290,7 +3476,7 @@ async function registerPatient() {
   if (!dob) { toast('Date of birth required','error'); return; }
   const mrn = genMRN();
   const initVisitId = 'visit-' + Date.now();
-  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: currentUserProfile?.displayName || currentUser.email, campusId: currentUserProfile?.campusId || 'unknown', campusName: currentUserProfile?.campusName || 'Unknown Campus', createdAt: firebase.firestore.FieldValue.serverTimestamp(), visitStatus: 'open', visitId: initVisitId, visitNumber: 1, visitStartedAt: firebase.firestore.FieldValue.serverTimestamp(), visitLog: [], vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], notes:[], vision:[] };
+  const data = { mrn, first, last, dob, gender: document.getElementById('nr-sex').value, blood: document.getElementById('nr-blood').value, phone: document.getElementById('nr-phone').value, email: document.getElementById('nr-email').value, insurance: document.getElementById('nr-ins').value, address: document.getElementById('nr-addr').value, emergency: document.getElementById('nr-emerg').value, provider: document.getElementById('nr-prov').value, registeredBy: currentUserProfile?.displayName || currentUser.email, campusId: currentUserProfile?.campusId || 'unknown', campusName: currentUserProfile?.campusName || 'Unknown Campus', createdAt: firebase.firestore.FieldValue.serverTimestamp(), visitStatus: 'open', visitId: initVisitId, visitNumber: 1, visitStartedAt: firebase.firestore.FieldValue.serverTimestamp(), visitLog: [], vitals:[], medications:[], allergies:[], pmh:[], surgery:[], family:[], social:null, procedures:[], vaccines:[], ekgs:[], urinalysis:[], notes:[], vision:[] };
   const cc = document.getElementById('nr-cc').value.trim();
   if (cc) data.notes = [{ type:'Admission Note', author: currentUserProfile?.displayName||currentUser.email, content:`CHIEF COMPLAINT:\n${cc}`, time: new Date().toISOString() }];
   try {
@@ -3566,6 +3752,63 @@ async function applyAllCampusFixes() {
     window._campusFixList = [];
   } catch(e) {
     panel.innerHTML = `<div style="color:#e74c3c">Error applying fixes: ${e.message}</div>`;
+  }
+}
+
+async function runProgramFix() {
+  const panel = document.getElementById('program-fix-panel');
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="color:var(--text3);font-size:13px">Scanning student accounts...</div>';
+
+  try {
+    const usersSnap = await db.collection('users').get();
+    const broken = [];
+    usersSnap.docs.forEach(doc => {
+      const u = { id: doc.id, ...doc.data() };
+      if (u.role !== 'instructor' && u.role !== 'admin' && !u.program) broken.push(u);
+    });
+
+    if (!broken.length) {
+      panel.innerHTML = `<div style="color:var(--green);font-weight:600">✓ All student accounts have a program assigned — nothing to fix.</div>`;
+      return;
+    }
+
+    panel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700">🎓 Program Assignment Scan — ${broken.length} student account${broken.length!==1?'s':''} missing a program</div>
+        <button class="btn sm" onclick="document.getElementById('program-fix-panel').style.display='none'">✕ Close</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">These accounts predate the Program field and default to "Medical Assisting" in the app UI, but the Firestore security rules check the stored value directly — so writes (like Rx orders) get rejected with "Missing or insufficient permissions" until you set the real program below. Pick the correct program for each student, then Save.</div>
+      <table class="dt" style="font-size:11px"><thead><tr><th>Name</th><th>Email</th><th>Campus</th><th>Program</th><th></th></tr></thead><tbody>
+        ${broken.map(u => `<tr id="pf-row-${u.id}">
+          <td>${u.displayName||'—'}</td>
+          <td style="font-family:var(--mono)">${u.email||'—'}</td>
+          <td>${u.campusName||'—'}</td>
+          <td>
+            <select id="pf-select-${u.id}">
+              <option value="medical_assisting">Medical Assisting</option>
+              <option value="billing_coding">Billing &amp; Coding</option>
+              <option value="pharmacy_tech">Pharmacy Technology</option>
+            </select>
+          </td>
+          <td><button class="btn sm primary" onclick="applyProgramFix('${u.id}')">Save</button></td>
+        </tr>`).join('')}
+      </tbody></table>`;
+
+  } catch(e) {
+    panel.innerHTML = `<div style="color:#e74c3c">Error scanning users: ${e.message}</div>`;
+  }
+}
+
+async function applyProgramFix(userId) {
+  const select = document.getElementById('pf-select-' + userId);
+  const program = select.value;
+  try {
+    await db.collection('users').doc(userId).update({ program });
+    const row = document.getElementById('pf-row-' + userId);
+    if (row) row.innerHTML = `<td colspan="5" style="color:var(--green)">✓ Set to ${program.replace('_',' ')} — student should log out and back in.</td>`;
+  } catch(e) {
+    toast('Error saving program: ' + e.message, 'error');
   }
 }
 
@@ -5811,7 +6054,7 @@ async function saveAppointment() {
         visitStatus:'open',visitId:'visit-'+Date.now(),visitNumber:1,
         visitStartedAt:firebase.firestore.FieldValue.serverTimestamp(),visitLog:[],
         vitals:[],medications:[],allergies:[],pmh:[],surgery:[],family:[],
-        social:null,procedures:[],vaccines:[],ekgs:[],notes:[],vision:[]
+        social:null,procedures:[],vaccines:[],ekgs:[],urinalysis:[],notes:[],vision:[]
       });
       patientId=ref.id; patientName=`${last}, ${first}`; patientPhone=phone; patientDob=dob; patientMrn=mrn;
       toast(`New patient ${first} ${last} registered`);
